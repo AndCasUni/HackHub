@@ -1,4 +1,4 @@
 package it.hackhub.role;
 
-public class UserRole {
+public class MentorRole {
 }

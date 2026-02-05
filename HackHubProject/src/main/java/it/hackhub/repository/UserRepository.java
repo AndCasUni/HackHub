@@ -1,4 +1,4 @@
 package it.hackhub.repository;
 
-public class repoProva {
+public class UserRepository {
 }

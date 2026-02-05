@@ -1,8 +1,6 @@
 package it.hackhub.domain.state;
 
 import it.hackhub.domain.model.Hackathon;
-import it.hackhub.domain.model.SubTeam;
-import it.hackhub.domain.model.Submission;
 
 import java.time.LocalDateTime;
 
