@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC
+        "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+    <class name="it.hackhub.model.domain.TeamInvitation" table="team_invitations">
+        <id name="id" column="id" type="string" length="36">
+            <generator class="assigned"/>
+        </id>
+
+        <property name="status" column="status">
+            <type name="org.hibernate.type.EnumType">
+                <param name="enumClass">it.hackhub.model.enums.InvitationStatus</param>
+                <param name="useNamed">true</param>
+            </type>
+        </property>
+
+        <property name="sentAt" column="sent_at" type="java.time.LocalDateTime"/>
+
+        <many-to-one name="sender" class="it.hackhub.model.domain.User" column="sender_id"/>
+        <many-to-one name="receiver" class="it.hackhub.model.domain.User" column="receiver_id"/>
+        <many-to-one name="team" class="it.hackhub.model.domain.Team" column="team_id"/>
+    </class>
+</hibernate-mapping>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC
+        "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping package="it.hackhub.model.domain">
+    <class name="it.hackhub.model.domain.Evaluation" table="evaluations">
+        <id name="id" column="id" type="string">
+            <generator class="assigned"/>
+        </id>
+
+        <many-to-one name="judge" column="judge_id" class="it.hackhub.model.domain.User" not-null="true"/>
+        <many-to-one name="submission" column="submission_id" class="it.hackhub.model.domain.Submission" not-null="true"/>
+
+        <property name="score" column="score" type="int" not-null="true"/>
+        <property name="feedback" column="feedback" type="string" length="1000"/>
+    </class>
+</hibernate-mapping>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC
+        "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+    <class name="it.hackhub.model.domain.Hackathon" table="hackathons">
+        <id name="id" column="id" type="string" length="36">
+            <generator class="assigned"/>
+        </id>
+
+        <property name="name" column="name" type="string" length="200" not-null="true"/>
+        <property name="description" column="description" type="text"/>
+
+        <property name="startDate" column="start_date" type="java.time.LocalDateTime"/>
+        <property name="endDate" column="end_date" type="java.time.LocalDateTime"/>
+
+        <property name="state" column="state">
+            <type name="org.hibernate.type.EnumType">
+                <param name="enumClass">it.hackhub.model.enums.HackathonStatus</param>
+                <param name="useNamed">true</param>
+            </type>
+        </property>
+
+        <bag name="staff" table="hackathon_staff" cascade="save-update" lazy="false">
+            <key column="hackathon_id"/>
+            <many-to-many column="user_id" class="it.hackhub.model.domain.User"/>
+        </bag>
+
+        <bag name="registeredTeams" inverse="true" cascade="save-update" lazy="false">
+            <key column="hackathon_id"/>
+            <one-to-many class="it.hackhub.model.domain.Team"/>
+        </bag>
+    </class>
+</hibernate-mapping>

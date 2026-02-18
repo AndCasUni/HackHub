@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC
+        "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+    <class name="it.hackhub.model.domain.SupportRequest" table="support_requests">
+        <id name="id" column="id" type="string" length="36">
+            <generator class="assigned"/>
+        </id>
+
+        <property name="title" column="title" type="string" length="200" not-null="true"/>
+        <property name="description" column="description" type="text"/>
+        <property name="status" column="status">
+            <type name="org.hibernate.type.EnumType">
+                <param name="enumClass">it.hackhub.model.enums.SupportRequestStatus</param>
+                <param name="useNamed">true</param>
+            </type>
+        </property>
+        <property name="createdAt" column="created_at" type="java.time.LocalDateTime"/>
+
+        <many-to-one name="requester" class="it.hackhub.model.domain.User"
+                     column="requester_id" not-null="true"/>
+
+        <many-to-one name="assignedMentor" class="it.hackhub.model.domain.User"
+                     column="mentor_id"/>
+    </class>
+</hibernate-mapping>
