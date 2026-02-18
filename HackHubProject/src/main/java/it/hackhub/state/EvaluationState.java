@@ -1,57 +1,70 @@
-package it.hackhub.domain.state;
+package it.hackhub.state;
 
-import it.hackhub.domain.model.Hackathon;
-
+import it.hackhub.model.domain.*;
+import it.hackhub.model.enums.HackathonStatus;
 
 public class EvaluationState implements HackathonState {
 
-    private Hackathon hackathon;
-
     @Override
-    public void setHackathon(Hackathon hackathon) {
-        this.hackathon = hackathon;
-    }
-
-    @Override
-    public void openRegistration(Hackathon hackathon) {
-        hackathon.setState(new RegistrationState());
-    }
-    @Override
-    public void addTeam(Hackathon hackathon, SubTeam team) {
-        throw new IllegalStateException("Valutazioni in corso");
-    }
-
-    @Override
-    public void addSubmission(Hackathon hackathon, Submission submission) {
-        throw new IllegalStateException("Scadenza sottomissioni");
-    }
-
-    @Override
-    public void evaluateSubmission(Hackathon hackathon, Submission submission) {
-        // Judge può valutare
-        //hackathon.getJudge().getEvaluations().add(new Evaluation());
+    public void transitionToOngoing(Hackathon hackathon) {
+        throw new IllegalStateException("Impossibile tornare alla fase in corso.");
     }
 
     @Override
     public void transitionToEvaluation(Hackathon hackathon) {
-        // Già in valutazione
+        throw new IllegalStateException("Già in fase di valutazione.");
     }
 
     @Override
-    public void transitionToClosed(Hackathon hackathon) {
-        hackathon.setState(new ClosedState());
+    public void transitionToCompleted(Hackathon hackathon) {
+        hackathon.setState(HackathonStatus.COMPLETED);
     }
 
     @Override
-    public void transitionToRunning(Hackathon hackathon) {
-        throw new IllegalStateException("Già valutato");
+    public boolean canRegisterTeam() { return false; }
+
+    @Override
+    public void registerTeam(Hackathon hackathon, Team team) {
+        throw new IllegalStateException("Hackathon terminato.");
     }
 
     @Override
-    public String getStatus() { return "IN VALUTAZIONE";
+    public boolean canSubmit() { return false; }
 
-
+    @Override
+    public void submitWork(Hackathon hackathon, Team team, Submission submission) {
+        throw new IllegalStateException("Scadenza sottomissioni superata.");
     }
 
+    @Override
+    public boolean canEvaluate() { return true; }
 
+    @Override
+    public void evaluateSubmission(Hackathon hackathon, Submission submission, User judge) {
+        // Logica di valutazione [cite: 20]
+    }
+
+    @Override
+    public boolean canAssignStaff() { return false; }
+
+    @Override
+    public boolean canDeclareWinner() { return true; }
+
+    @Override
+    public void declareWinner(Hackathon hackathon) {
+        // Effettua la transizione allo stato finale
+        hackathon.setState(it.hackhub.model.enums.HackathonStatus.COMPLETED);
+
+        // REQUISITO: Quando l'hackathon è concluso, lo staff deve essere liberato (Observer)
+    }
+
+    @Override
+    public boolean canRequestSupport() { return false; }
+
+    @Override
+    public String getStateName() { return "EVALUATION"; }
+    @Override
+    public void cancelHackathon(Hackathon hackathon) {
+        throw new IllegalStateException("Impossibile cancellare l'hackathon ora.");
+    }
 }

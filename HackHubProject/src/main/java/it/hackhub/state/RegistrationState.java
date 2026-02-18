@@ -1,59 +1,99 @@
-package it.hackhub.domain.state;
+package it.hackhub.state;
 
-import it.hackhub.domain.model.Hackathon;
-
-import java.time.LocalDateTime;
+import it.hackhub.model.domain.Hackathon;
+import it.hackhub.model.domain.Team;
+import it.hackhub.model.domain.Submission;
+import it.hackhub.model.domain.User;
+import it.hackhub.model.enums.HackathonStatus;
 
 public class RegistrationState implements HackathonState {
 
-    private Hackathon hackathon;
+    @Override
+    public void transitionToOngoing(Hackathon hackathon) {
+        // 1. Verifica presenza di almeno un Giudice
+        boolean hasJudge = hackathon.getStaff().stream()
+                .anyMatch(u -> u.getRoleEnum() == it.hackhub.model.enums.UserRoleEnum.JUDGE);
 
-    @Override
-    public void setHackathon(Hackathon hackathon) {
-        this.hackathon = hackathon;
-    }
+        // 2. Verifica presenza di almeno un Mentore
+        boolean hasMentor = hackathon.getStaff().stream()
+                .anyMatch(u -> u.getRoleEnum() == it.hackhub.model.enums.UserRoleEnum.MENTOR);
 
-    @Override
-    public void openRegistration(Hackathon hackathon) {
-        // Già registrazione
-    }
-    @Override
-    public void addTeam(Hackathon hackathon, SubTeam team) {
-        if (LocalDateTime.now().isAfter(hackathon.getRegistrationDeadline())) {
-            throw new IllegalStateException("Iscrizioni chiuse");
+        if (!hasJudge || !hasMentor) {
+            throw new IllegalStateException("Impossibile avviare l'hackathon: assicurarsi di aver assegnato almeno un Giudice e un Mentore.");
         }
-        if (!team.hasValidSize(hackathon.getMaxTeamSize())) {
-            throw new IllegalArgumentException("Sottoteam non rispetta dimensione");
+
+        // 3. Controllo opzionale: presenza di almeno un team iscritto
+        if (hackathon.getRegisteredTeams().isEmpty()) {
+            throw new IllegalStateException("Impossibile avviare l'hackathon senza team iscritti.");
         }
-        hackathon.getTeams().add(team);
-        System.out.println("Team iscritto: " + team.getCaptain().getUsername());
-    }
 
-    @Override
-    public void addSubmission(Hackathon hackathon, Submission submission) {
-        throw new IllegalStateException("Hackathon non ancora iniziato");
-    }
+        // Transizione di stato
+        hackathon.setState(HackathonStatus.ONGOING);
 
-    @Override
-    public void transitionToRunning(Hackathon hackathon) {
-        hackathon.setState(new RunningState());
     }
 
     @Override
     public void transitionToEvaluation(Hackathon hackathon) {
-        throw new IllegalStateException("Passa prima per RUNNING");
+        throw new IllegalStateException("Impossibile passare a valutazione dalla registrazione.");
     }
 
     @Override
-    public void transitionToClosed(Hackathon hackathon) {
-        throw new IllegalStateException("Passa prima per EVALUATION");
+    public void transitionToCompleted(Hackathon hackathon) {
+        throw new IllegalStateException("Impossibile concludere un hackathon in registrazione.");
     }
 
     @Override
-    public void evaluateSubmission(Hackathon hackathon, Submission submission) {
-        throw new IllegalStateException("Valutazioni non aperte");
+    public boolean canRegisterTeam() { return true; }
+
+    @Override
+    public void registerTeam(Hackathon hackathon, Team team) {
+        hackathon.getRegisteredTeams().add(team);
     }
 
     @Override
-    public String getStatus() { return "IN ISCRIZIONE"; }
+    public boolean canSubmit() { return false; }
+
+    @Override
+    public void submitWork(Hackathon hackathon, Team team, Submission submission) {
+        throw new IllegalStateException("Sottomissioni non permesse in fase di registrazione.");
+    }
+
+    @Override
+    public boolean canEvaluate() { return false; }
+
+    @Override
+    public void evaluateSubmission(Hackathon hackathon, Submission submission, User judge) {
+        throw new IllegalStateException("Valutazioni non permesse in fase di registrazione.");
+    }
+
+    @Override
+    public boolean canAssignStaff() { return true; }
+
+    @Override
+    public boolean canDeclareWinner() { return false; }
+
+    @Override
+    public void declareWinner(Hackathon hackathon) {
+        throw new IllegalStateException("Impossibile dichiarare un vincitore ora.");
+    }
+
+    @Override
+    public boolean canRequestSupport() { return false; }
+
+    @Override
+    public String getStateName() { return "REGISTRATION"; }
+
+    @Override
+    public void cancelHackathon(Hackathon hackathon) {
+        // Verifica se ci sono team iscritti
+        if (!hackathon.getRegisteredTeams().isEmpty()) {
+            // Se ci sono team, la chiusura potrebbe richiedere logiche di rimborso (se previsto)
+            // o semplicemente una notifica di annullamento specifica.
+            System.out.println("Annullamento hackathon con team iscritti in corso...");
+        }
+
+        // L'hackathon passa direttamente a COMPLETED (o uno stato di ANNULLATO se previsto)
+        hackathon.setState(HackathonStatus.COMPLETED);
+
+    }
 }
