@@ -6,24 +6,27 @@ import it.hackhub.model.domain.Team;
 import it.hackhub.model.domain.TeamInvitation;
 import it.hackhub.model.domain.User;
 import it.hackhub.model.enums.InvitationStatus;
-import it.hackhub.observer.HackathonSubject;
+import it.hackhub.observer.InvitationSubject;
 import it.hackhub.repository.TeamInvitationRepository;
 import it.hackhub.repository.TeamRepository;
 import it.hackhub.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import it.hackhub.model.enums.InvitationStatus;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.NoSuchElementException;
 
-/**
- * Service per la gestione degli inviti ai team.
- * Implementa la logica di business relativa alla partecipazione degli utenti ai team[cite: 25, 26].
- */
-public class InvitationService extends HackathonSubject {
+@Service
+public class InvitationService extends InvitationSubject {
 
     private final TeamInvitationRepository invitationRepository;
     private final UserRepository userRepository;
     private final TeamRepository teamRepository;
 
+    @Autowired
     public InvitationService(TeamInvitationRepository invitationRepository,
                              UserRepository userRepository,
                              TeamRepository teamRepository) {
@@ -32,17 +35,22 @@ public class InvitationService extends HackathonSubject {
         this.teamRepository = teamRepository;
     }
 
-    /**
-     * Invia un invito a un utente per unirsi a un team.
-     */
-    public TeamInvitation inviteUser(String senderId, String receiverId, String teamId) {
-        User sender = userRepository.findById(senderId).orElseThrow();
-        User receiver = userRepository.findById(receiverId).orElseThrow();
+    @Transactional
+    public void inviteUser(String senderId, String receiverId, String teamId) {
+        User sender = userRepository.findById(senderId)
+                .orElseThrow(() -> new NoSuchElementException("Mittente non trovato"));
+        User receiver = userRepository.findById(receiverId)
+                .orElseThrow(() -> new NoSuchElementException("Destinatario non trovato"));
         Team team = teamRepository.findById(teamId)
-                .orElseThrow(() -> new RuntimeException("Team non trovato con ID: " + teamId));
-        // Verifica che il ricevente non sia già in un team attivo
-        if (receiver.isMemberOfActiveTeam()) {
-            throw new UserAlreadyInTeamException(receiverId);
+                .orElseThrow(() -> new NoSuchElementException("Team non trovato"));
+
+        if (team.getLeader() == null || !team.getLeader().getId().equals(senderId)) {
+            throw new SecurityException("Azione non consentita: solo il leader del team può inviare inviti.");
+        }
+
+        // Controllo se l'utente è già in un team
+        if (userRepository.isUserInAnyTeam(receiverId)) {
+            throw new UserAlreadyInTeamException(receiver.getUsername());
         }
 
         TeamInvitation invitation = new TeamInvitation();
@@ -53,64 +61,81 @@ public class InvitationService extends HackathonSubject {
         invitation.setSentAt(LocalDateTime.now());
 
         invitationRepository.save(invitation);
-        notifyInvitation(invitation);
-        return invitation;
+
+        notifyInvitationSent(invitation);
     }
 
-    /**
-     * Accetta un invito. Implementa il vincolo del team unico e
-     * il rifiuto automatico degli altri inviti pendenti[cite: 47, 48].
-     */
-    public void acceptInvitation(String invitationId) {
+    @Transactional
+    public void replyToInvitation(String invitationId, boolean accepted) {
         TeamInvitation invitation = invitationRepository.findById(invitationId)
-                .orElseThrow(() -> new RuntimeException("Invito non trovato con ID: " + invitationId));
+                .orElseThrow(() -> new NoSuchElementException("Invito non trovato"));
+
         if (invitation.getStatus() != InvitationStatus.PENDING) {
-            throw new InvitationAlreadyHandledException(invitationId);
+            throw new InvitationAlreadyHandledException(invitation.getId());
         }
 
-        User receiver = invitation.getReceiver();
+        if (accepted) {
+            User receiver = invitation.getReceiver();
+            Team team = invitation.getTeam();
 
-        if (receiver.isMemberOfActiveTeam()) {
-            throw new UserAlreadyInTeamException(receiver.getId());
-        }
-
-        Team team = invitation.getTeam();
-        // Usiamo il metodo helper che abbiamo aggiunto alla classe Team
-        team.addMember(receiver);
-        invitation.setStatus(InvitationStatus.ACCEPTED);
-
-        // Pulizia automatica degli altri inviti pendenti (Requisito Matrix)
-        List<TeamInvitation> otherPending = invitationRepository.findPendingByReceiver(receiver.getId());
-        for (TeamInvitation other : otherPending) {
-            if (!other.getId().equals(invitationId)) {
-                other.setStatus(InvitationStatus.REJECTED);
+            if (userRepository.isUserInAnyTeam(receiver.getId())) {
+                throw new UserAlreadyInTeamException(receiver.getUsername());
             }
+
+            team.getMembers().add(receiver);
+            receiver.getTeams().add(team);
+
+            invitation.setStatus(InvitationStatus.ACCEPTED);
+
+            teamRepository.save(team);
+            userRepository.save(receiver);
+        } else {
+            invitation.setStatus(InvitationStatus.REJECTED);
         }
 
-        teamRepository.save(team);
         invitationRepository.save(invitation);
-        notifyInvitation(invitation);
+
+
+        notifyInvitationReplied(invitation);
+    }
+    public List<TeamInvitation> getAllInvitations() {
+        return invitationRepository.findAll();
     }
 
-    /**
-     * Rifiuta un invito specifico[cite: 49].
-     */
-    public void rejectInvitation(String invitationId) {
-        TeamInvitation invitation = invitationRepository.findById(invitationId)
-                .orElseThrow(() -> new RuntimeException("Invito non trovato con ID: " + invitationId));
-        if (invitation.getStatus() != InvitationStatus.PENDING) {
-            throw new InvitationAlreadyHandledException(invitationId);
+    public TeamInvitation getInvitationById(String id) {
+        return invitationRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Invito non trovato con ID: " + id));
+    }
+
+    public List<TeamInvitation> getPendingInvitationsForUser(String userId) {
+        if (!userRepository.existsById(userId)) {
+            throw new NoSuchElementException("Utente non trovato");
         }
-
-        invitation.setStatus(InvitationStatus.REJECTED);
-        invitationRepository.save(invitation);
-        notifyInvitation(invitation);
+        return invitationRepository.findByReceiverIdAndStatus(userId, InvitationStatus.PENDING);
     }
 
-    /**
-     * Recupera la lista di inviti pendenti per un utente[cite: 46].
-     */
-    public List<TeamInvitation> getPendingInvitations(String userId) {
-        return invitationRepository.findPendingByReceiver(userId);
+    @Transactional
+    public void replyToInvitation(String userId, String teamId, boolean accepted) {
+        TeamInvitation invitation = invitationRepository
+                .findByReceiverIdAndTeamIdAndStatus(userId, teamId, InvitationStatus.PENDING)
+                .orElseThrow(() -> new NoSuchElementException("Nessun invito in attesa trovato per l'utente " + userId + " nel team " + teamId));
+
+        invitation.setStatus(accepted ? InvitationStatus.ACCEPTED : InvitationStatus.REJECTED);
+        invitationRepository.save(invitation);
+
+        if (accepted) {
+            Team team = invitation.getTeam();
+            User receiver = invitation.getReceiver();
+
+            if (receiver.isMemberOfActiveTeam()) {
+                throw new IllegalStateException("L'utente fa già parte di un team attivo.");
+            }
+
+            team.getMembers().add(receiver);
+            receiver.getTeams().add(team);
+
+            userRepository.save(receiver);
+            teamRepository.save(team);
+        }
     }
 }
