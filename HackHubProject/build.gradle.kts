@@ -1,37 +1,42 @@
 plugins {
     java
-    application
-    id("io.freefair.lombok") version "8.6"  // Opzionale
+    id("org.springframework.boot") version "3.2.3"
+    id("io.spring.dependency-management") version "1.1.4"
 }
 
 group = "it.hackhub"
-version = "1.0.0-SNAPSHOT"
+version = "0.0.1-SNAPSHOT"
 
 java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
+    sourceCompatibility = JavaVersion.VERSION_17
+}
+
+configurations {
+    compileOnly {
+        extendsFrom(configurations.annotationProcessor.get())
     }
 }
 
-repositories { mavenCentral() }
+repositories {
+    mavenCentral()
+}
 
 dependencies {
-    implementation("org.hibernate.orm:hibernate-core:6.4.4.Final")
-    //runtimeOnly("com.h2database:h2")
+    // Spring Boot Starter Data JPA (include Hibernate, Transaction API, ecc.)
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 
-    // SLF4J (opzionale, toglilo se errore logger)
-     implementation("org.slf4j:slf4j-api:2.0.9")
-     implementation("org.slf4j:slf4j-simple:2.0.9")
+    implementation("org.springframework.boot:spring-boot-starter-web")
+    // Database H2
+    runtimeOnly("com.h2database:h2")
 
-    compileOnly("org.projectlombok:lombok:1.18.30")
-    annotationProcessor("org.projectlombok:lombok:1.18.30")
+    // Lombok
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
 
-    testImplementation(platform("org.junit:junit-bom:5.10.0"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
+    // Test
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
 
-application {
-    mainClass.set("it.hackhub.HackHubApplication")
+tasks.withType<Test> {
+    useJUnitPlatform()
 }
-
-tasks.test { useJUnitPlatform() }
