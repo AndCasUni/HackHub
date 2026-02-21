@@ -1,16 +1,27 @@
 package it.hackhub.service;
 
-import it.hackhub.model.domain.*;
-import it.hackhub.exception.InvalidHackathonStateException;
-import it.hackhub.repository.*;
-import it.hackhub.model.enums.UserRoleEnum;
+import it.hackhub.model.domain.Evaluation;
+import it.hackhub.model.domain.Submission;
+import it.hackhub.model.domain.User;
+import it.hackhub.model.enums.HackathonStatus;
+import it.hackhub.repository.EvaluationRepository;
+import it.hackhub.repository.SubmissionRepository;
+import it.hackhub.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.NoSuchElementException;
+
+@Service
 public class EvaluationService {
 
     private final EvaluationRepository evaluationRepository;
     private final SubmissionRepository submissionRepository;
     private final UserRepository userRepository;
 
+    @Autowired
     public EvaluationService(EvaluationRepository evaluationRepository,
                              SubmissionRepository submissionRepository,
                              UserRepository userRepository) {
@@ -19,39 +30,44 @@ public class EvaluationService {
         this.userRepository = userRepository;
     }
 
-    public Evaluation evaluateSubmission(String submissionId, String judgeId, int score, String feedback) {
-        Submission submission = submissionRepository.findById(submissionId);
+    @Transactional
+    public void evaluateSubmission(String judgeId, String submissionId, int score, String feedback) {
         User judge = userRepository.findById(judgeId)
-                .orElseThrow(() -> new RuntimeException("Giudice non trovato"));
+                .orElseThrow(() -> new NoSuchElementException("Giudice non trovato"));
 
-        Hackathon hackathon = submission.getTeam().getRegisteredHackathon();
+        Submission submission = submissionRepository.findById(submissionId)
+                .orElseThrow(() -> new NoSuchElementException("Submission non trovata"));
 
-        // 1. Vincolo: Lo stato deve permettere la valutazione (EVALUATION)
-        if (!hackathon.getCurrentStateObject().canEvaluate()) {
-            throw new InvalidHackathonStateException("La fase di valutazione non è attiva.");
+        if (submission.getTeam().getRegisteredHackathon().getState() != HackathonStatus.EVALUATION) {
+            throw new IllegalStateException("L'Hackathon non è in fase di valutazione.");
         }
 
-        // 2. Vincolo: L'utente deve essere un JUDGE
-        if (judge.getRoleEnum() != UserRoleEnum.JUDGE) {
-            throw new IllegalStateException("Solo un Giudice può valutare le sottomissioni.");
-        }
-
-        // 3. Vincolo: Il giudice deve essere assegnato a questo Hackathon
-        if (!hackathon.getStaff().contains(judge)) {
-            throw new IllegalStateException("Il giudice non è assegnato a questo hackathon.");
+        if (!submission.getTeam().getRegisteredHackathon().getStaff().contains(judge)) {
+            throw new SecurityException("L'utente non è un giudice autorizzato per questo hackathon.");
         }
 
         Evaluation evaluation = new Evaluation();
-        evaluation.setSubmission(submission);
         evaluation.setJudge(judge);
+        evaluation.setSubmission(submission);
         evaluation.setScore(score);
         evaluation.setFeedback(feedback);
 
         evaluationRepository.save(evaluation);
-        return evaluation;
+    }
+    public List<Evaluation> getAllEvaluations() {
+        return evaluationRepository.findAll();
     }
 
-    public double getAverageScore(String submissionId) {
-        return evaluationRepository.getAverageScore(submissionId);
+    public Evaluation getEvaluationById(String id) {
+        return evaluationRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Valutazione non trovata con ID: " + id));
+    }
+
+    public List<Evaluation> getEvaluationsByTeam(String teamId) {
+        return evaluationRepository.findBySubmission_Team_Id(teamId);
+    }
+
+    public List<Evaluation> getEvaluationsByHackathon(String hackathonId) {
+        return evaluationRepository.findBySubmission_Team_RegisteredHackathon_Id(hackathonId);
     }
 }

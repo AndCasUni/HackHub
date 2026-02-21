@@ -2,47 +2,52 @@ package it.hackhub.service;
 
 import it.hackhub.model.domain.Notification;
 import it.hackhub.model.domain.User;
-import it.hackhub.model.enums.NotificationType;
 import it.hackhub.repository.NotificationRepository;
-import it.hackhub.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Service
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
-    private final UserRepository userRepository;
 
-    public NotificationService(NotificationRepository notificationRepository,
-                               UserRepository userRepository) {
+    @Autowired
+    public NotificationService(NotificationRepository notificationRepository) {
         this.notificationRepository = notificationRepository;
-        this.userRepository = userRepository;
     }
 
-    public void sendNotification(String userId, String title, String message, NotificationType type) {
-        User user = userRepository.findById(userId).orElseThrow();
+    @Transactional
+    public void sendNotification(User recipient, String title, String message, String type) {
+        Notification notification = new Notification();
+        notification.setRecipient(recipient);
+        notification.setTitle(title);
+        notification.setMessage(message);
+        notification.setType(type);
+        notification.setCreatedAt(LocalDateTime.now());
+        notification.setRead(false);
 
-        Notification notif = new Notification();
-        notif.setRecipient(user);
-        notif.setTitle(title);
-        notif.setMessage(message);
-        notif.setType(type);
-        notif.setCreatedAt(LocalDateTime.now());
-        notif.setRead(false);
+        notificationRepository.save(notification);
 
+        System.out.println("[NOTIFICA >> " + recipient.getUsername() + "] " + title + ": " + message);
+    }
+
+    public List<Notification> getUnreadUserNotifications(String userId) {
+        return notificationRepository.findByRecipientIdAndIsReadFalse(userId);
+    }
+
+    @Transactional
+    public void markAsRead(String notificationId) {
+        Notification notif = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new java.util.NoSuchElementException("Notifica non trovata"));
+
+        notif.setRead(true);
         notificationRepository.save(notif);
     }
-
-    public List<Notification> getUnreadNotifications(String userId) {
-        return notificationRepository.findUnreadByUser(userId);
-    }
-
-    public void markAsRead(String notificationId) {
-        notificationRepository.markAsRead(notificationId);
-    }
-
-    public void save(Notification notification) {
-        notificationRepository.save(notification);
+    public List<Notification> getUserNotifications(String userId) {
+        return notificationRepository.findByRecipientId(userId);
     }
 }
