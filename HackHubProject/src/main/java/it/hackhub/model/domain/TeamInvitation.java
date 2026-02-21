@@ -2,9 +2,9 @@ package it.hackhub.model.domain;
 
 import it.hackhub.model.enums.InvitationStatus;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -12,7 +12,9 @@ import java.util.UUID;
 @Table(name = "team_invitations")
 @Data
 @NoArgsConstructor
+@AllArgsConstructor
 public class TeamInvitation {
+
     @Id
     @Column(length = 36)
     private String id = UUID.randomUUID().toString();
@@ -24,15 +26,15 @@ public class TeamInvitation {
     @Column(name = "sent_at")
     private LocalDateTime sentAt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "sender_id")
     private User sender;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "receiver_id")
     private User receiver;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "team_id")
     private Team team;
 }
