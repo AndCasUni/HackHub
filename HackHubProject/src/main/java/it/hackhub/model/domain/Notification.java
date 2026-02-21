@@ -1,10 +1,10 @@
 package it.hackhub.model.domain;
 
-import it.hackhub.model.enums.NotificationType;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -12,7 +12,9 @@ import java.util.UUID;
 @Table(name = "notifications")
 @Data
 @NoArgsConstructor
+@AllArgsConstructor
 public class Notification {
+
     @Id
     @Column(length = 36)
     private String id = UUID.randomUUID().toString();
@@ -20,19 +22,20 @@ public class Notification {
     @Column(nullable = false, length = 200)
     private String title;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(length = 32000) // Text
     private String message;
-
-    @Enumerated(EnumType.STRING)
-    private NotificationType type;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
     @Column(name = "is_read")
-    private boolean read = false;
+    private boolean isRead = false;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @Column(name = "type")
+    private String type;
+
+    @ManyToOne
     @JoinColumn(name = "recipient_id", nullable = false)
+    @JsonIgnore
     private User recipient;
 }
