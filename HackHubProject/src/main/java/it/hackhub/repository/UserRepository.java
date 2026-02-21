@@ -1,56 +1,27 @@
 package it.hackhub.repository;
 
-import it.hackhub.exception.UserAlreadyInTeamException;
-import it.hackhub.model.domain.Team;
 import it.hackhub.model.domain.User;
 import it.hackhub.model.enums.UserRoleEnum;
-import it.hackhub.config.HibernateUtil;
-import org.hibernate.Session;
-import org.hibernate.Transaction;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
-public class UserRepository {
+@Repository
+public interface UserRepository extends JpaRepository<User, String> {
 
-    public void save(User user) {
-        try (Session session = HibernateUtil.getSession()) {
-            Transaction tx = session.beginTransaction();
-            session.merge(user);
-            tx.commit();
-        }
-    }
+    Optional<User> findByEmail(String email);
 
-    public Optional<User> findById(String id) {
-        try (Session session = HibernateUtil.getSession()) {
-            User user = session.get(User.class, id);
-            return Optional.ofNullable(user);
-        }
-    }
+    // Trova utenti per ruolo
+    List<User> findByRoleEnum(UserRoleEnum roleEnum);
 
-    public Optional<User> findByEmail(String email) {
-        try (Session session = HibernateUtil.getSession()) {
-            return session.createQuery("FROM User WHERE email = :email", User.class)
-                    .setParameter("email", email)
-                    .uniqueResultOptional();
-        }
-    }
+    // Query personalizzata per verificare se l'utente è in un team (come membro)
+    // Ritorna true se il conteggio è > 0
+    @Query("SELECT CASE WHEN COUNT(t) > 0 THEN true ELSE false END FROM Team t JOIN t.members m WHERE m.id = :userId")
+    boolean isUserInAnyTeam(String userId);
 
-    public List<User> findByRole(UserRoleEnum role) {
-        try (Session session = HibernateUtil.getSession()) {
-            return session.createQuery(
-                            "FROM User WHERE roleEnum = :role", User.class)
-                    .setParameter("role", role)
-                    .list();
-        }
-    }
-    public boolean isUserInAnyTeam(String userId) {
-        try (Session session = HibernateUtil.getSession()) {
-            List<Team> teams = session.createQuery(
-                            "FROM Team t JOIN t.leader l WHERE l.id = :userId", Team.class)
-                    .setParameter("userId", userId)
-                    .list();
-            return !teams.isEmpty();
-        }
-    }
+    java.util.Optional<User> findByEmailAndPassword(String email, String password);
+
 }

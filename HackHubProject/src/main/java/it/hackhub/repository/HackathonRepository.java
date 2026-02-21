@@ -2,33 +2,14 @@ package it.hackhub.repository;
 
 import it.hackhub.model.domain.Hackathon;
 import it.hackhub.model.enums.HackathonStatus;
-import it.hackhub.config.HibernateUtil;
-import org.hibernate.Session;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
-public class HackathonRepository {
+@Repository
+public interface HackathonRepository extends JpaRepository<Hackathon, String> {
 
-    public void save(Hackathon hackathon) {
-        try (Session session = HibernateUtil.getSession()) {
-            var tx = session.beginTransaction();
-            session.merge(hackathon);
-            tx.commit();
-        }
-    }
-
-    public Hackathon findById(String id) {
-        try (Session session = HibernateUtil.getSession()) {
-            return session.get(Hackathon.class, id);
-        }
-    }
-
-    public List<Hackathon> findByStatus(HackathonStatus status) {
-        try (Session session = HibernateUtil.getSession()) {
-            return session.createQuery(
-                            "FROM Hackathon WHERE state = :status", Hackathon.class)
-                    .setParameter("status", status)
-                    .list();
-        }
-    }
+    // Trova tutti gli hackathon in un certo stato
+    List<Hackathon> findByState(HackathonStatus state);
 }
