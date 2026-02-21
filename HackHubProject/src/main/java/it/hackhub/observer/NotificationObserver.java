@@ -1,11 +1,12 @@
 package it.hackhub.observer;
 
-import it.hackhub.model.domain.*;
-import it.hackhub.model.enums.NotificationType;
+import it.hackhub.model.domain.Hackathon;
+import it.hackhub.model.domain.Team;
+import it.hackhub.model.domain.TeamInvitation;
+import it.hackhub.model.domain.User;
 import it.hackhub.service.NotificationService;
-import java.time.LocalDateTime;
 
-public class NotificationObserver implements HackathonObserver {
+public class NotificationObserver implements HackathonObserver, InvitationObserver {
 
     private final NotificationService notificationService;
 
@@ -14,47 +15,77 @@ public class NotificationObserver implements HackathonObserver {
     }
 
     @Override
-    public void onStatusChanged(Hackathon hackathon) {
-        String message = "Hackathon " + hackathon.getName() + ": ora in fase " + hackathon.getState();
-        // Invia a tutti i membri dei team iscritti e allo staff
-        hackathon.getStaff().forEach(u -> createNotification(u, "Cambio Stato", message));
+    public void onHackathonStatusChanged(Hackathon hackathon) {
+        String message = "L'Hackathon '" + hackathon.getName() + "' è ora nello stato: " + hackathon.getState();
+
+        if (hackathon.getRegisteredTeams() != null) {
+            hackathon.getRegisteredTeams().forEach(team -> {
+                // Notifica al leader del team
+                notificationService.sendNotification(
+                        team.getLeader(),
+                        "Aggiornamento Hackathon",
+                        message,
+                        "INFO"
+                );
+            });
+        }
     }
 
     @Override
     public void onStaffAssigned(Hackathon hackathon, User staffMember) {
-        String message = "Sei stato assegnato come " + staffMember.getRoleEnum() + " per l'Hackathon " + hackathon.getName();
-        createNotification(staffMember, "Nuovo Incarico", message);
+        // Notifica specifica per il membro dello staff assegnato
+        String title = "Nuova Assegnazione Staff";
+        String message = "Sei stato assegnato come " + staffMember.getRoleEnum() +
+                " all'hackathon '" + hackathon.getName() + "'.";
+
+        notificationService.sendNotification(staffMember, title, message, "STAFF_ASSIGNMENT");
     }
 
     @Override
-    public void onInvitationUpdated(TeamInvitation invitation) {
-        String message;
-        User recipient;
-
-        switch (invitation.getStatus()) {
-            case PENDING -> {
-                message = "Il Leader del Team " + invitation.getTeam().getName() + " ti ha invitato";
-                recipient = invitation.getReceiver();
-            }
-            case ACCEPTED -> {
-                message = invitation.getReceiver().getUsername() + " ha accettato il tuo invito";
-                recipient = invitation.getSender();
-            }
-            case REJECTED -> {
-                message = invitation.getReceiver().getUsername() + " ha rifiutato il tuo invito";
-                recipient = invitation.getSender();
-            }
-            default -> {return; }
-        }
-        createNotification(recipient, "Aggiornamento Invito", message);
+    public void onInvitationSent(TeamInvitation invitation) {
+        notificationService.sendNotification(
+                invitation.getReceiver(),
+                "Nuovo Invito al Team",
+                "Hai ricevuto un invito per unirti al team " + invitation.getTeam().getName(),
+                "INVITATION"
+        );
     }
 
-    private void createNotification(User user, String title, String msg) {
-        Notification n = new Notification();
-        n.setRecipient(user);
-        n.setTitle(title);
-        n.setMessage(msg);
-        n.setCreatedAt(LocalDateTime.now());
-        notificationService.save(n);
+    @Override
+    public void onInvitationReplied(TeamInvitation invitation) {
+        notificationService.sendNotification(
+                invitation.getSender(),
+                "Risposta Invito",
+                "L'utente " + invitation.getReceiver().getUsername() + " ha " + invitation.getStatus() + " il tuo invito.",
+                "INVITATION_REPLY"
+        );
+    }
+
+    @Override
+    public void onTeamWon(Hackathon hackathon, Team winningTeam) {
+        String title = "🏆 Vittoria Hackathon!";
+        String message = String.format("Congratulazioni! Il tuo team '%s' ha vinto l'hackathon '%s' e si è aggiudicato un premio di %.2f€!",
+                winningTeam.getName(), hackathon.getName(), hackathon.getPrizeAmount());
+
+        if (winningTeam.getLeader() != null) {
+            notificationService.sendNotification(
+                    winningTeam.getLeader(),
+                    title,
+                    message,
+                    "SYSTEM"
+            );
+        }
+
+        // Manda la notifica a tutti i Membri
+        if (winningTeam.getMembers() != null) {
+            for (User member : winningTeam.getMembers()) {
+                notificationService.sendNotification(
+                        member,
+                        title,
+                        message,
+                        "SYSTEM"
+                );
+            }
+        }
     }
 }

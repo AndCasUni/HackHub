@@ -1,13 +1,14 @@
 package it.hackhub.observer;
 
 import it.hackhub.model.domain.Hackathon;
-import it.hackhub.model.domain.TeamInvitation;
+import it.hackhub.model.domain.Team;
 import it.hackhub.model.domain.User;
 
 public interface HackathonObserver {
-    void onStatusChanged(Hackathon hackathon);
+    void onHackathonStatusChanged(Hackathon hackathon);
 
+    // Notifica quando un membro dello staff viene assegnato
     void onStaffAssigned(Hackathon hackathon, User staffMember);
 
-    void onInvitationUpdated(TeamInvitation invitation);
+    void onTeamWon(Hackathon hackathon, Team winningTeam);
 }
