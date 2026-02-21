@@ -1,52 +1,19 @@
 package it.hackhub.repository;
 
 import it.hackhub.model.domain.Evaluation;
-import it.hackhub.config.HibernateUtil;
-import org.hibernate.Session;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
-public class EvaluationRepository {
+@Repository
+public interface EvaluationRepository extends JpaRepository<Evaluation, String> {
 
-    public void save(Evaluation evaluation) {
-        try (Session session = HibernateUtil.getSession()) {
-            var tx = session.beginTransaction();
-            session.merge(evaluation);
-            tx.commit();
-        }
-    }
+    List<Evaluation> findByJudgeId(String judgeId);
 
-    public Evaluation findById(String id) {
-        try (Session session = HibernateUtil.getSession()) {
-            return session.get(Evaluation.class, id);
-        }
-    }
+    // Trova valutazioni per Team (passando dalla submission)
+    List<Evaluation> findBySubmission_Team_Id(String teamId);
 
-    public List<Evaluation> findBySubmission(String submissionId) {
-        try (Session session = HibernateUtil.getSession()) {
-            return session.createQuery(
-                            "FROM Evaluation WHERE submission.id = :submissionId", Evaluation.class)
-                    .setParameter("submissionId", submissionId)
-                    .list();
-        }
-    }
-
-    public List<Evaluation> findByJudge(String judgeId) {
-        try (Session session = HibernateUtil.getSession()) {
-            return session.createQuery(
-                            "FROM Evaluation WHERE judge.id = :judgeId", Evaluation.class)
-                    .setParameter("judgeId", judgeId)
-                    .list();
-        }
-    }
-
-    public double getAverageScore(String submissionId) {
-        try (Session session = HibernateUtil.getSession()) {
-            Double avg = session.createQuery(
-                            "SELECT AVG(e.score) FROM Evaluation e WHERE e.submission.id = :id", Double.class)
-                    .setParameter("id", submissionId)
-                    .uniqueResult();
-            return avg != null ? avg : 0.0;
-        }
-    }
+    // Trova valutazioni per Hackathon
+    List<Evaluation> findBySubmission_Team_RegisteredHackathon_Id(String hackathonId);
 }
