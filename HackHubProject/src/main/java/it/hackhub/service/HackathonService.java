@@ -1,129 +1,244 @@
 package it.hackhub.service;
 
+import it.hackhub.exception.InvalidHackathonStateException;
 import it.hackhub.exception.StaffMemberAlreadyOccupiedException;
 import it.hackhub.exception.UserAlreadyStaffException;
-import it.hackhub.model.domain.*;
+import it.hackhub.model.domain.Hackathon;
+import it.hackhub.model.domain.Team;
+import it.hackhub.model.domain.User;
 import it.hackhub.model.enums.HackathonStatus;
+import it.hackhub.model.enums.UserRoleEnum;
 import it.hackhub.observer.HackathonSubject;
-import it.hackhub.repository.*;
-import it.hackhub.state.HackathonState;
+import it.hackhub.repository.HackathonRepository;
+import it.hackhub.repository.PaymentRepository;
+import it.hackhub.repository.TeamRepository;
+import it.hackhub.repository.UserRepository;
 import it.hackhub.state.RegistrationState;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import it.hackhub.state.EvaluationState;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.NoSuchElementException;
+
+@Service
 public class HackathonService extends HackathonSubject {
+
     private final HackathonRepository hackathonRepository;
     private final UserRepository userRepository;
     private final PaymentRepository paymentRepository;
+    @Autowired
+    private final TeamRepository teamRepository;
 
-    public HackathonService(HackathonRepository hackathonRepository, UserRepository userRepository, PaymentRepository paymentRepository) {
+    @Autowired
+    public HackathonService(HackathonRepository hackathonRepository,
+                            UserRepository userRepository,
+                            PaymentRepository paymentRepository,
+                            TeamRepository teamRepository) {
         this.hackathonRepository = hackathonRepository;
         this.userRepository = userRepository;
         this.paymentRepository = paymentRepository;
+        this.teamRepository = teamRepository;
     }
 
-    // Transizione verso ONGOING (chiamata dall'Organizer)
-    public void startHackathon(String hackathonId) {
-        Hackathon hackathon = hackathonRepository.findById(hackathonId);
-        // Delega allo stato attuale la logica di transizione
-        hackathon.getCurrentStateObject().transitionToOngoing(hackathon);
-        hackathonRepository.save(hackathon);
+    @Transactional
+    public Hackathon createHackathon(String customId, String name, String description,
+                                     LocalDateTime startDate, LocalDateTime endDate,
+                                     Double prizeAmount, String organizerId) {
 
-        notifyStatusChange(hackathon);
-    }
+        // Recupera l'organizzatore
+        User organizer = userRepository.findById(organizerId)
+                .orElseThrow(() -> new NoSuchElementException("Organizzatore non trovato con ID: " + organizerId));
 
-    // Registrazione di un team
-    public void registerTeamToHackathon(String hackathonId, Team team) {
-        Hackathon hackathon = hackathonRepository.findById(hackathonId);
-        HackathonState state = hackathon.getCurrentStateObject();
-
-        if (state.canRegisterTeam()) {
-            state.registerTeam(hackathon, team);
-            hackathonRepository.save(hackathon);
-        } else {
-            throw new IllegalStateException("Registrazione non permessa nello stato: " + hackathon.getState());
+        if (organizer.getRoleEnum() != UserRoleEnum.ORGANIZER) {
+            throw new IllegalArgumentException("L'utente specificato non è un ORGANIZER");
         }
+
+        Hackathon hackathon = new Hackathon();
+
+        if (customId != null && !customId.isBlank()) {
+            hackathon.setId(customId);
+        }
+
+        hackathon.setName(name);
+        hackathon.setDescription(description);
+        hackathon.setStartDate(startDate);
+        hackathon.setEndDate(endDate);
+        hackathon.setPrizeAmount(prizeAmount);
+        hackathon.setOrganizer(organizer);
+
+        hackathon.changeState(new RegistrationState());
+
+        return hackathonRepository.save(hackathon);
     }
 
+    @Transactional
     public void addStaff(String hackathonId, String userId) {
-        // Recupero dell'hackathon e dell'utente con gestione Optional
-        Hackathon hackathon = hackathonRepository.findById(hackathonId);
+        Hackathon hackathon = hackathonRepository.findById(hackathonId)
+                .orElseThrow(() -> new NoSuchElementException("Hackathon non trovato"));
+
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Utente non trovato"));
+                .orElseThrow(() -> new NoSuchElementException("Utente non trovato"));
 
-        // 1. Controllo dello stato dell'hackathon (deve essere in REGISTRATION)
-        if (!hackathon.getCurrentStateObject().canAssignStaff()) {
-            throw new IllegalStateException("Assegnazione staff permessa solo in fase di registrazione.");
-        }
+        // Controlla se è già staff QUI
+        boolean alreadyStaff = hackathon.getStaff().stream()
+                .anyMatch(u -> u.getId().equals(userId));
 
-        // 2. Controllo se l'utente è già assegnato a QUESTO hackathon
-        if (hackathon.getStaff().contains(user)) {
-            throw new UserAlreadyStaffException(userId, hackathonId);
-        }
 
-        // 3. VINCOLO: Verifica se lo staffer è occupato altrove [cite: 65, 124]
-        if (user.isStaffOccupied()) {
-            throw new StaffMemberAlreadyOccupiedException(userId);
-        }
+        if (alreadyStaff) {
+            throw new StaffMemberAlreadyOccupiedException(userId);        }
 
-        // 4. Assegnazione bidirezionale
-        hackathon.addStaffMember(user);
+        hackathon.getStaff().add(user);
+        user.getAssignedHackathons().add(hackathon);
 
         hackathonRepository.save(hackathon);
-        notifyStaffAssignment(hackathon, user);
+        userRepository.save(user);
+
+        notifyStaffAssigned(hackathon, user);
     }
 
-    public void declareWinner(String hackathonId, String organizerId) {
-        Hackathon hackathon = hackathonRepository.findById(hackathonId);
+    @Transactional
+    public void registerTeam(String hackathonId, String teamId) {
+        Hackathon hackathon = hackathonRepository.findById(hackathonId)
+                .orElseThrow(() -> new NoSuchElementException("Hackathon non trovato"));
+        Team team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new NoSuchElementException("Team non trovato"));
 
-        // 1. Verifica che chi chiama l'azione sia l'organizzatore (opzionale se gestito da controller)
+        team.setRegisteredHackathon(hackathon);
+        hackathon.getRegisteredTeams().add(team);
 
-        // 2. Verifica lo stato tramite il Pattern State (deve essere EVALUATION)
-        if (!hackathon.getCurrentStateObject().canDeclareWinner()) {
-            throw new IllegalStateException("Si può dichiarare un vincitore solo in fase di valutazione.");
-        }
+        teamRepository.save(team);
+        hackathonRepository.save(hackathon);
+    }
 
-        // 3. Verifica che tutte le sottomissioni siano state giudicate
-        if (!hackathon.allSubmissionsJudged()) {
-            throw new IllegalStateException("Impossibile procedere: ci sono ancora sottomissioni senza valutazione.");
-        }
+    @Transactional
+    public void startHackathon(String hackathonId) {
+        Hackathon hackathon = hackathonRepository.findById(hackathonId)
+                .orElseThrow(() -> new NoSuchElementException("Hackathon non trovato"));
 
-        // 4. Calcolo del vincitore basato sulla media (Logica Automatica)
-        Team winner = hackathon.getRegisteredTeams().stream()
-                .filter(t -> t.getLatestSubmission() != null)
-                .max(java.util.Comparator.comparingDouble(t -> t.getLatestSubmission().getAverageScore()))
-                .orElseThrow(() -> new RuntimeException("Nessun team con sottomissione trovato"));
-
-        // 5. Transizione di stato e salvataggio
-        hackathon.getCurrentStateObject().declareWinner(hackathon);
-
-        paymentRepository.savePaymentRecord(winner.getId(), hackathon.getPrizeAmount(), hackathon.getId());
+        hackathon.getCurrentStateObject().transitionToOngoing(hackathon);
 
         hackathonRepository.save(hackathon);
         notifyStatusChange(hackathon);
     }
 
-    /**
-     * Chiude un hackathon se è ancora in fase di registrazione e non ha team iscritti.
-     */
-    public void closeEmptyHackathon(String hackathonId) {
-        Hackathon hackathon = hackathonRepository.findById(hackathonId);
+    @Transactional
+    public void declareWinner(String hackathonId) {
+        Hackathon hackathon = hackathonRepository.findById(hackathonId)
+                .orElseThrow(() -> new NoSuchElementException("Hackathon non trovato"));
 
-        // 1. Verifica che lo stato sia REGISTRATION tramite il Pattern State
-        if (!(hackathon.getCurrentStateObject() instanceof RegistrationState)) {
-            throw new IllegalStateException("L'hackathon può essere annullato senza team solo in fase di registrazione.");
+        Team winner = hackathon.calculateWinner();
+
+        if (winner != null) {
+            hackathon.setWinner(winner);
+
+            hackathon.getCurrentStateObject().declareWinner(hackathon);
+
+            // Pagamento
+            paymentRepository.savePaymentRecord(winner.getId(),
+                    hackathon.getPrizeAmount() != null ? hackathon.getPrizeAmount() : 0.0,
+                    hackathon.getId());
+
+            // 2. INVIA LA NOTIFICA DELLA VITTORIA
+            notifyTeamWon(hackathon, winner);
+        } else {
+            // Se non ci sono vincitori (es. zero team)
+            hackathon.changeState(new it.hackhub.state.CompletedState());
         }
 
-        // 2. Vincolo: Verifica che non ci siano team iscritti
+        hackathonRepository.save(hackathon);
+        notifyStatusChange(hackathon); // Notifica generica di hackathon concluso
+    }
+
+
+    @Transactional
+    public void forceStateToEvaluation(String id) {
+        Hackathon hackathon = getHackathonById(id);
+
+        hackathon.changeState(new EvaluationState());
+
+        hackathonRepository.save(hackathon);
+
+        notifyStatusChange(hackathon);
+    }
+
+    public List<Hackathon> getAllHackathons() {
+        return hackathonRepository.findAll();
+    }
+
+    public Hackathon getHackathonById(String id) {
+        return hackathonRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Hackathon non trovato con ID: " + id));
+    }
+
+    @Transactional
+    public void deleteHackathon(String hackathonId, String requesterId) {
+        Hackathon hackathon = getHackathonById(hackathonId);
+
+        // L'utente richiedente deve essere l'organizzatore
+        if (!hackathon.getOrganizer().getId().equals(requesterId)) {
+            throw new SecurityException("Solo l'organizzatore dell'hackathon può cancellare l'evento.");
+        }
+
+        // Deve essere in fase di registrazione
+        if (hackathon.getState() != HackathonStatus.REGISTRATION) {
+            throw new IllegalStateException("Impossibile cancellare: l'hackathon non è più in fase di registrazione.");
+        }
+
+        // Deve avere 0 team iscritti
         if (hackathon.getRegisteredTeams() != null && !hackathon.getRegisteredTeams().isEmpty()) {
-            throw new IllegalStateException("Impossibile chiudere: ci sono team già iscritti. Procedere con l'evento o gestire i rimborsi.");
+            throw new IllegalStateException("Impossibile cancellare l'hackathon: ci sono già team iscritti. Falli disiscrivere prima.");
         }
 
-        // 3. Esegue la transizione
-        hackathon.getCurrentStateObject().cancelHackathon(hackathon);
+        hackathonRepository.delete(hackathon);
+    }
 
-        // 4. Persiste il cambio di stato
-        hackathonRepository.save(hackathon);
+    // MOSTRA PER STATO
+    public List<Hackathon> getHackathonsByState(HackathonStatus state) {
+        return hackathonRepository.findByState(state);
+    }
 
-        // 5. Trigger Notifica (Observer)
-        notifyStatusChange(hackathon);
+    // SEGNALA VIOLAZIONE (Solo Mentore)
+    @Transactional
+    public void reportTeamViolation(String mentorId, String teamId, String reason) {
+        User mentor = userRepository.findById(mentorId)
+                .orElseThrow(() -> new NoSuchElementException("Mentore non trovato"));
+
+        Team team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new NoSuchElementException("Team non trovato"));
+
+        if (mentor.getRoleEnum() != UserRoleEnum.MENTOR) {
+            throw new SecurityException("Solo un MENTOR può segnalare violazioni.");
+        }
+
+
+        team.setReported(true);
+        team.setReportReason(reason);
+        teamRepository.save(team);
+    }
+
+    // SQUALIFICA TEAM (Solo Organizer, Solo su segnalazione)
+    @Transactional
+    public void disqualifyTeam(String organizerId, String teamId) {
+        Team team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new NoSuchElementException("Team non trovato"));
+
+        Hackathon hackathon = team.getRegisteredHackathon();
+        if (hackathon == null) throw new IllegalStateException("Il team non è iscritto a nessun hackathon.");
+
+        // Richiedente deve essere l'organizzatore dell'hackathon
+        if (!hackathon.getOrganizer().getId().equals(organizerId)) {
+            throw new SecurityException("Solo l'organizzatore dell'hackathon può squalificare un team.");
+        }
+
+        // Deve esserci una segnalazione del mentore
+        if (!team.isReported()) {
+            throw new IllegalStateException("Impossibile squalificare: Il team non ha ricevuto segnalazioni da un Mentore.");
+        }
+
+        team.setDisqualified(true);
+        teamRepository.save(team);
     }
 }
