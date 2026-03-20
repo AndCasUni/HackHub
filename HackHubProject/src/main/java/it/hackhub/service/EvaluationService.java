@@ -45,6 +45,9 @@ public class EvaluationService {
         if (!submission.getTeam().getRegisteredHackathon().getStaff().contains(judge)) {
             throw new SecurityException("L'utente non è un giudice autorizzato per questo hackathon.");
         }
+        if (submission.getTeam().isDisqualified()) {
+            throw new IllegalArgumentException("La squadra è stata squalificata e non può essere valutata.");
+        }
 
         Evaluation evaluation = new Evaluation();
         evaluation.setJudge(judge);

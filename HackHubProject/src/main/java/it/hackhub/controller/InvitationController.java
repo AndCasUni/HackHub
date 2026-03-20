@@ -21,6 +21,12 @@ public class InvitationController {
         public String teamId;
     }
 
+    public static class ReplyInvitationRequest {
+        public String userId;
+        public String teamId;
+        public boolean accepted;
+    }
+
     // 1. Invia Invito
     @PostMapping("/send")
     public ResponseEntity<String> inviteUser(@RequestBody InviteRequest req) {
@@ -65,14 +71,12 @@ public class InvitationController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
-    // Rispondi all'invito usando userId e teamId
-    // URL: POST http://localhost:8080/api/invitations/reply?userId=p2&teamId=t1&accepted=true
+    // POST http://localhost:8080/api/invitations/reply
     @PostMapping("/reply")
-    public ResponseEntity<String> reply(@RequestParam String userId, @RequestParam String teamId, @RequestParam boolean accepted) {
+    public ResponseEntity<String> reply(@RequestBody ReplyInvitationRequest req) {
         try {
-            invitationService.replyToInvitation(userId, teamId, accepted);
-            String message = accepted ? "Invito accettato, sei entrato nel team!" : "Invito rifiutato.";
-            return ResponseEntity.ok(message);
+            invitationService.replyToInvitation(req.userId, req.teamId, req.accepted);
+            return ResponseEntity.ok(req.accepted ? "Invito accettato." : "Invito rifiutato.");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

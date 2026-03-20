@@ -24,6 +24,21 @@ public class HackathonController {
         public LocalDateTime endDate;
         public Double prizeAmount;
         public String organizerId;
+        public Integer maxParticipants;
+    }
+    public static class AddStaffRequest {
+        public String userId;
+    }
+
+    public static class ReportTeamRequest {
+        public String mentorId;
+        public String teamId;
+        public String reason;
+    }
+
+    public static class DisqualifyTeamRequest {
+        public String organizerId;
+        public String teamId;
     }
 
     // POST: Creazione Hackathon con Organizzatore
@@ -37,7 +52,8 @@ public class HackathonController {
                     req.startDate,
                     req.endDate,
                     req.prizeAmount,
-                    req.organizerId
+                    req.organizerId,
+                    req.maxParticipants
             );
             return ResponseEntity.ok(created);
         } catch (Exception e) {
@@ -72,12 +88,14 @@ public class HackathonController {
         }
     }
 
-    // POST: Assegna Staff
+    // POST http://localhost:8080/api/hackathons/{id}/staff
     @PostMapping("/{id}/staff")
-    public ResponseEntity<String> addStaff(@PathVariable String id, @RequestParam String userId) {
+    public ResponseEntity<String> addStaff(
+            @PathVariable String id,
+            @RequestBody AddStaffRequest req) {
         try {
-            hackathonService.addStaff(id, userId);
-            return ResponseEntity.ok("Staff assegnato!");
+            hackathonService.addStaff(id, req.userId);
+            return ResponseEntity.ok("Membro dello staff aggiunto con successo.");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -123,25 +141,23 @@ public class HackathonController {
         return ResponseEntity.ok(hackathonService.getHackathonsByState(status));
     }
 
-    // POST: Segnala Violazione (Mentore)
-    // URL: POST http://localhost:8080/api/hackathons/report-team
+    // POST http://localhost:8080/api/hackathons/report-team
     @PostMapping("/report-team")
-    public ResponseEntity<String> reportTeam(@RequestParam String mentorId, @RequestParam String teamId, @RequestParam String reason) {
+    public ResponseEntity<String> reportTeam(@RequestBody ReportTeamRequest req) {
         try {
-            hackathonService.reportTeamViolation(mentorId, teamId, reason);
-            return ResponseEntity.ok("Segnalazione inviata con successo.");
+            hackathonService.reportTeamViolation(req.mentorId, req.teamId, req.reason);
+            return ResponseEntity.ok("Team segnalato con successo.");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
-    // POST: Squalifica Team (Organizer)
-    // URL: POST http://localhost:8080/api/hackathons/disqualify-team
+    // POST http://localhost:8080/api/hackathons/disqualify-team
     @PostMapping("/disqualify-team")
-    public ResponseEntity<String> disqualifyTeam(@RequestParam String organizerId, @RequestParam String teamId) {
+    public ResponseEntity<String> disqualifyTeam(@RequestBody DisqualifyTeamRequest req) {
         try {
-            hackathonService.disqualifyTeam(organizerId, teamId);
-            return ResponseEntity.ok("Team squalificato ufficialmente.");
+            hackathonService.disqualifyTeam(req.organizerId, req.teamId);
+            return ResponseEntity.ok("Team squalificato con successo.");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

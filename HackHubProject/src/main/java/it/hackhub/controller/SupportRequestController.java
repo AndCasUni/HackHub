@@ -22,6 +22,11 @@ public class SupportRequestController {
         public String description;
     }
 
+    public static class AcceptSupportRequest {
+        public String mentorId;
+        public java.time.LocalDateTime callTime;
+    }
+
     // INVIA RICHIESTA
     @PostMapping
     public ResponseEntity<?> create(@RequestBody CreateRequestDTO req) {
@@ -33,15 +38,14 @@ public class SupportRequestController {
         }
     }
 
-    // ACCETTA E PROPONI CALL
-    // URL: POST /api/support/{id}/accept?mentorId=...&callTime=2026-05-01T15:00:00
+    // POST http://localhost:8080/api/support/{requestId}/accept
     @PostMapping("/{id}/accept")
-    public ResponseEntity<String> accept(@PathVariable String id,
-                                         @RequestParam String mentorId,
-                                         @RequestParam LocalDateTime callTime) {
+    public ResponseEntity<String> acceptRequest(
+            @PathVariable String id,
+            @RequestBody AcceptSupportRequest req) {
         try {
-            supportRequestService.acceptRequest(id, mentorId, callTime);
-            return ResponseEntity.ok("Richiesta accettata e call fissata per il " + callTime);
+            supportRequestService.acceptRequest(id, req.mentorId, req.callTime);
+            return ResponseEntity.ok("Richiesta di supporto accettata. Orario call proposto.");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

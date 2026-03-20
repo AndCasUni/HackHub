@@ -23,6 +23,20 @@ public class UserController {
         public String password;
         public UserRoleEnum role;
     }
+    public static class LoginRequest {
+        public String email;
+        public String password;
+    }
+
+    public static class UpdateProfileRequest {
+        public String username;
+        public String email;
+    }
+
+    public static class ResetPasswordRequest {
+        public String email;
+        public String newPassword;
+    }
 
     @PostMapping("/register")
     public ResponseEntity<User> register(@RequestBody RegisterRequest req) {
@@ -47,27 +61,21 @@ public class UserController {
     public ResponseEntity<List<User>> getByRole(@PathVariable UserRoleEnum role) {
         return ResponseEntity.ok(userService.getUsersByRole(role));
     }
-    // POST: Simulazione Login
-    // URL: POST http://localhost:8080/api/users/login?email=test@test.it&password=miaPassword
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestParam String email, @RequestParam String password) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest req) {
         try {
-            User loggedInUser = userService.login(email, password);
-            // Restituiamo un messaggio di successo e i dati base dell'utente
+            User loggedInUser = userService.login(req.email, req.password);
             return ResponseEntity.ok(loggedInUser);
         } catch (SecurityException e) {
-            return ResponseEntity.status(401).body(e.getMessage()); // 401 = Unauthorized
+            return ResponseEntity.status(401).body(e.getMessage());
         }
     }
     // PUT: Modifica Profilo Utente
     // URL: PUT http://localhost:8080/api/users/{id}?username=NuovoNome&email=nuova@mail.it
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateProfile(
-            @PathVariable String id,
-            @RequestParam(required = false) String username,
-            @RequestParam(required = false) String email) {
+    public ResponseEntity<?> updateProfile(@PathVariable String id, @RequestBody UpdateProfileRequest req) {
         try {
-            User updatedUser = userService.updateProfile(id, username, email);
+            User updatedUser = userService.updateProfile(id, req.username, req.email);
             return ResponseEntity.ok(updatedUser);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Errore aggiornamento: " + e.getMessage());
@@ -77,10 +85,10 @@ public class UserController {
     // POST: Recupero Password (Reset)
     // URL: POST http://localhost:8080/api/users/reset-password?email=test@test.it&newPassword=nuovaPass123
     @PostMapping("/reset-password")
-    public ResponseEntity<String> resetPassword(@RequestParam String email, @RequestParam String newPassword) {
+    public ResponseEntity<String> resetPassword(@RequestBody ResetPasswordRequest req) {
         try {
-            userService.resetPassword(email, newPassword);
-            return ResponseEntity.ok("Password aggiornata con successo. Ora puoi effettuare il login.");
+            userService.resetPassword(req.email, req.newPassword);
+            return ResponseEntity.ok("Password aggiornata con successo.");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

@@ -21,6 +21,10 @@ public class    TeamController {
         public String leaderId;
     }
 
+    public static class ChangeLeaderRequest {
+        public String currentLeaderId;
+        public String newLeaderId;
+    }
     // Crea Team
     @PostMapping
     public ResponseEntity<Team> createTeam(@RequestBody CreateTeamRequest req) {
@@ -76,11 +80,14 @@ public class    TeamController {
         }
     }
 
+    // POST http://localhost:8080/api/teams/{teamId}/change-leader
     @PostMapping("/{teamId}/change-leader")
-    public ResponseEntity<String> changeLeader(@PathVariable String teamId, @RequestParam String currentLeaderId, @RequestParam String newLeaderId) {
+    public ResponseEntity<String> changeLeader(
+            @PathVariable String teamId,
+            @RequestBody ChangeLeaderRequest req) {
         try {
-            teamService.changeLeader(teamId, currentLeaderId, newLeaderId);
-            return ResponseEntity.ok("Ruolo di leader trasferito con successo.");
+            teamService.changeLeader(teamId, req.currentLeaderId, req.newLeaderId);
+            return ResponseEntity.ok("Leader cambiato con successo.");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

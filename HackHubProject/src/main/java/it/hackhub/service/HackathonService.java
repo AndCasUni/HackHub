@@ -46,7 +46,7 @@ public class HackathonService extends HackathonSubject {
     @Transactional
     public Hackathon createHackathon(String customId, String name, String description,
                                      LocalDateTime startDate, LocalDateTime endDate,
-                                     Double prizeAmount, String organizerId) {
+                                     Double prizeAmount, String organizerId, Integer maxParticipants) {
 
         // Recupera l'organizzatore
         User organizer = userRepository.findById(organizerId)
@@ -68,6 +68,7 @@ public class HackathonService extends HackathonSubject {
         hackathon.setEndDate(endDate);
         hackathon.setPrizeAmount(prizeAmount);
         hackathon.setOrganizer(organizer);
+        hackathon.setMaxParticipants(maxParticipants);
 
         hackathon.changeState(new RegistrationState());
 
@@ -106,6 +107,17 @@ public class HackathonService extends HackathonSubject {
         Team team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new NoSuchElementException("Team non trovato"));
 
+        if (hackathon.getState() != HackathonStatus.REGISTRATION) {
+            throw new InvalidHackathonStateException("L'hackathon non è in fase di registrazione");
+        }
+
+        if (team.getRegisteredHackathon() != null) {
+            throw new IllegalStateException("Il team è già iscritto a un hackathon");
+        }
+
+        if (team.getMembers().size() > hackathon.getMaxParticipants()) {
+            throw new IllegalStateException("Il team è troppo grande per questo hackathon. Massimo consentito: " + hackathon.getMaxParticipants());
+        }
         team.setRegisteredHackathon(hackathon);
         hackathon.getRegisteredTeams().add(team);
 
@@ -118,6 +130,10 @@ public class HackathonService extends HackathonSubject {
         Hackathon hackathon = hackathonRepository.findById(hackathonId)
                 .orElseThrow(() -> new NoSuchElementException("Hackathon non trovato"));
 
+        // Deve essere in fase di registrazione
+        if (hackathon.getState() != HackathonStatus.REGISTRATION) {
+            throw new IllegalStateException("Impossibile iniziare: l'hackathon non è più in fase di registrazione.");
+        }
         hackathon.getCurrentStateObject().transitionToOngoing(hackathon);
 
         hackathonRepository.save(hackathon);
@@ -226,7 +242,7 @@ public class HackathonService extends HackathonSubject {
                 .orElseThrow(() -> new NoSuchElementException("Team non trovato"));
 
         Hackathon hackathon = team.getRegisteredHackathon();
-        if (hackathon == null) throw new IllegalStateException("Il team non è iscritto a nessun hackathon.");
+        if (hackathon == null) throw new NoSuchElementException("Il team non è iscritto a nessun hackathon.");
 
         // Richiedente deve essere l'organizzatore dell'hackathon
         if (!hackathon.getOrganizer().getId().equals(organizerId)) {
@@ -235,7 +251,7 @@ public class HackathonService extends HackathonSubject {
 
         // Deve esserci una segnalazione del mentore
         if (!team.isReported()) {
-            throw new IllegalStateException("Impossibile squalificare: Il team non ha ricevuto segnalazioni da un Mentore.");
+            throw new IllegalArgumentException("Impossibile squalificare: Il team non ha ricevuto segnalazioni da un Mentore.");
         }
 
         team.setDisqualified(true);

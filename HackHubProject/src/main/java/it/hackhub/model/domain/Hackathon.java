@@ -38,6 +38,9 @@ public class Hackathon {
     @Column(name = "end_date")
     private LocalDateTime endDate;
 
+    @Column(name = "max_participants")
+    private Integer maxParticipants;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private HackathonStatus state = HackathonStatus.REGISTRATION;
@@ -105,12 +108,28 @@ public class Hackathon {
     public Team calculateWinner() {
         if (registeredTeams == null || registeredTeams.isEmpty()) return null;
 
+
+        long totalSubmissions = registeredTeams.stream()
+                .filter(t -> t.getSubmission() != null)
+                .count();
+
+        long evaluatedSubmissions = registeredTeams.stream()
+                .filter(t -> t.getSubmission() != null)
+                .filter(t -> t.getSubmission().getEvaluations() != null && !t.getSubmission().getEvaluations().isEmpty())
+                .count();
+
+        if (totalSubmissions > 0 && evaluatedSubmissions < totalSubmissions) {
+            throw new IllegalStateException("Impossibile dichiarare il vincitore: non tutte le sottomissioni sono state valutate dai giudici.");
+        }
+
+
         Team winner = null;
         double maxScore = -1.0;
 
         for (Team team : registeredTeams) {
+            if (team.getSubmission() != null && team.getSubmission().getEvaluations() != null && !team.getSubmission().getEvaluations().isEmpty()) {
 
-            if (team.getSubmission() != null) {
+                // Calcola la media dei voti per questo team
                 double avg = team.getSubmission().getEvaluations().stream()
                         .mapToInt(it.hackhub.model.domain.Evaluation::getScore)
                         .average()
@@ -120,8 +139,18 @@ public class Hackathon {
                     maxScore = avg;
                     winner = team;
                 }
+
+                else if (avg == maxScore && winner != null) {
+                    java.time.LocalDateTime currentWinnerTime = winner.getSubmission().getSubmittedAt();
+                    java.time.LocalDateTime newTeamTime = team.getSubmission().getSubmittedAt();
+
+                    if (newTeamTime != null && currentWinnerTime != null && newTeamTime.isBefore(currentWinnerTime)) {
+                        winner = team;
+                    }
+                }
             }
         }
+
         return winner;
     }
 }
