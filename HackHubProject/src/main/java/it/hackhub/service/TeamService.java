@@ -7,6 +7,7 @@ import it.hackhub.model.domain.Team;
 import it.hackhub.model.domain.User;
 import it.hackhub.model.enums.HackathonStatus;
 import it.hackhub.repository.HackathonRepository;
+import it.hackhub.repository.TeamInvitationRepository;
 import it.hackhub.repository.TeamRepository;
 import it.hackhub.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,16 +25,19 @@ public class TeamService {
     private final UserRepository userRepository;
     private final HackathonRepository hackathonRepository;
     private final NotificationService notificationService;
+    private final TeamInvitationRepository teamInvitationRepository;
 
     @Autowired
     public TeamService(TeamRepository teamRepository,
                        UserRepository userRepository,
                        HackathonRepository hackathonRepository,
-                       NotificationService notificationService) {
+                       NotificationService notificationService,
+                       TeamInvitationRepository teamInvitationRepository) {
         this.teamRepository = teamRepository;
         this.userRepository = userRepository;
         this.hackathonRepository = hackathonRepository;
         this.notificationService = notificationService;
+        this.teamInvitationRepository = teamInvitationRepository;
     }
 
     @Transactional
@@ -128,6 +132,7 @@ public class TeamService {
         }
         team.getMembers().clear();
 
+        teamInvitationRepository.deleteByTeamId(teamId);
         teamRepository.delete(team);
     }
 
@@ -144,6 +149,7 @@ public class TeamService {
 
         if (team.getLeader().getId().equals(userId)) {
             if (team.getMembers().isEmpty()) {
+                teamInvitationRepository.deleteByTeamId(teamId);
                 teamRepository.delete(team);
                 return;
             } else {
