@@ -1,63 +1,54 @@
 package it.hackhub.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+import it.hackhub.dto.request.submission.SubmitRequest;
 import it.hackhub.model.domain.Submission;
 import it.hackhub.service.SubmissionService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Tag(name = "Submission", description = "Gestione submission dei team")
 @RestController
 @RequestMapping("/api/submissions")
 public class SubmissionController {
 
-    @Autowired
-    private SubmissionService submissionService;
-
-    public static class SubmitRequest {
-        public String id;
-        public String teamId;
-        public String githubUrl;
-    }
+    @Autowired private SubmissionService submissionService;
 
     @PostMapping
-    public ResponseEntity<?> submitWork(@RequestBody SubmitRequest req) {
-        try {
-            Submission created = submissionService.submitWork(req.teamId, req.githubUrl ,req.id);
-            return ResponseEntity.ok(created);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Errore: " + e.getMessage());
-        }
+    public ResponseEntity<Submission> submit(@Valid @RequestBody SubmitRequest request) {
+        Submission submission = submissionService.submitWork(
+                request.teamId,
+                request.githubUrl,
+                request.id,
+                request.submitterId
+        );
+        return ResponseEntity.ok(submission);
     }
+
     @GetMapping
     public ResponseEntity<List<Submission>> getAll() {
         return ResponseEntity.ok(submissionService.getAllSubmissions());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getById(@PathVariable String id) {
-        try {
-            return ResponseEntity.ok(submissionService.getSubmissionById(id));
-        } catch (Exception e) {
-            return ResponseEntity.status(404).body(e.getMessage());
-        }
+    public ResponseEntity<Submission> getById(@PathVariable String id) {
+        return ResponseEntity.ok(submissionService.getSubmissionById(id));
     }
 
-    // URL: http://localhost:8080/api/submissions/team/{teamId}
     @GetMapping("/team/{teamId}")
-    public ResponseEntity<?> getByTeam(@PathVariable String teamId) {
-        try {
-            return ResponseEntity.ok(submissionService.getSubmissionByTeam(teamId));
-        } catch (Exception e) {
-            return ResponseEntity.status(404).body(e.getMessage());
-        }
+    public ResponseEntity<Submission> getByTeam(@PathVariable String teamId) {
+        return ResponseEntity.ok(submissionService.getSubmissionByTeam(teamId));
     }
 
-    // GET: Mostra tutte le sottomissioni di un Hackathon
-    // URL: http://localhost:8080/api/submissions/hackathon/{hackathonId}
     @GetMapping("/hackathon/{hackathonId}")
-    public ResponseEntity<List<Submission>> getByHackathon(@PathVariable String hackathonId) {
-        return ResponseEntity.ok(submissionService.getSubmissionsByHackathon(hackathonId));
+    public ResponseEntity<List<Submission>> getByHackathon(
+            @PathVariable String hackathonId,
+            @RequestParam String requesterId) {
+        return ResponseEntity.ok(
+                submissionService.getSubmissionsByHackathon(hackathonId, requesterId));
     }
 }

@@ -30,8 +30,6 @@ public class HackHubApplication {
         return (args) -> {
             System.out.println("=== AVVIO HACKHUB SYSTEM (SPRING BOOT) ===");
 
-            // 0. Configurazione Observer (Manuale)
-            // Colleghiamo il NotificationObserver ai Service che emettono eventi
             NotificationObserver observer = new NotificationObserver(notificationService);
             hackathonService.addObserver(observer);
             invitationService.addObserver(observer);

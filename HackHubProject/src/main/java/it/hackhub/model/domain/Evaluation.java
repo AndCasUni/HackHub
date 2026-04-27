@@ -20,7 +20,7 @@ public class Evaluation {
 
     @ManyToOne
     @JoinColumn(name = "judge_id", nullable = false)
-    private User judge;
+    private UserStaff judge;
 
     @ManyToOne
     @JoinColumn(name = "submission_id", nullable = false)

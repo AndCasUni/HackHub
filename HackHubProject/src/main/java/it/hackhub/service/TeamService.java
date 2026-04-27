@@ -1,10 +1,10 @@
 package it.hackhub.service;
 
-import it.hackhub.exception.TeamNotInOngoingHackathonException;
 import it.hackhub.exception.UserAlreadyInTeamException;
 import it.hackhub.model.domain.Hackathon;
 import it.hackhub.model.domain.Team;
 import it.hackhub.model.domain.User;
+import it.hackhub.model.domain.UserPlayer;
 import it.hackhub.model.enums.HackathonStatus;
 import it.hackhub.repository.HackathonRepository;
 import it.hackhub.repository.TeamInvitationRepository;
@@ -42,15 +42,22 @@ public class TeamService {
 
     @Transactional
     public Team createTeam(String name, String leaderId, String customId) {
-
-        User leader = userRepository.findById(leaderId)
+        User raw = userRepository.findById(leaderId)
                 .orElseThrow(() -> new RuntimeException("Utente non trovato"));
-        if (leader.isMemberOfActiveTeam()) throw new UserAlreadyInTeamException(leaderId);
+
+        if (!(raw instanceof UserPlayer playerLeader))
+            throw new IllegalArgumentException("Solo un PLAYER può creare un team.");
+
+        if (playerLeader.isMemberOfActiveTeam())
+            throw new UserAlreadyInTeamException(leaderId);
+
         Team team = new Team();
         if (customId != null && !customId.isBlank()) team.setId(customId);
         team.setName(name);
-        team.setLeader(leader);
-        team.getMembers().add(leader);
+        team.setLeader(playerLeader);
+        team.getMembers().add(playerLeader);
+        playerLeader.setCurrentTeam(team);
+        userRepository.save(playerLeader);
         return teamRepository.save(team);
     }
 
@@ -59,76 +66,67 @@ public class TeamService {
         Team team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new RuntimeException("Team non trovato"));
 
-        // PRECONDIZIONE : Essere Leader del Team
-        if (!team.getLeader().getId().equals(requesterId)) {
+        if (!team.getLeader().getId().equals(requesterId))
             throw new SecurityException("Solo il leader può iscrivere il team all'hackathon.");
-        }
 
         Hackathon hackathon = hackathonRepository.findById(hackathonId)
                 .orElseThrow(() -> new RuntimeException("Hackathon non trovato"));
 
-        // PRECONDIZIONE XML: Hackathon in fase di iscrizione
-        if (hackathon.getState() != HackathonStatus.REGISTRATION) {
+        if (hackathon.getState() != HackathonStatus.REGISTRATION)
             throw new IllegalStateException("L'Hackathon non è in fase di iscrizione.");
-        }
 
         team.setRegisteredHackathon(hackathon);
         hackathon.getRegisteredTeams().add(team);
-
         teamRepository.save(team);
 
-        String message = "Il tuo team '" + team.getName() + "' è stato iscritto all'hackathon '" + hackathon.getName() + "'.";
-        for (User member : team.getMembers()) {
+        String message = "Il tuo team '" + team.getName()
+                + "' è stato iscritto all'hackathon '" + hackathon.getName() + "'.";
+        for (User member : team.getMembers())
             notificationService.sendNotification(member, "Iscrizione Hackathon", message, "REGISTRATION_CONFIRMED");
-        }
     }
 
-    // DISISCRIZIONE TEAM (Solo Leader, Solo se REGISTRATION)
     @Transactional
     public void unregisterTeamFromHackathon(String teamId, String leaderId) {
         Team team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new NoSuchElementException("Team non trovato"));
 
-        if (!team.getLeader().getId().equals(leaderId)) {
+        if (!team.getLeader().getId().equals(leaderId))
             throw new SecurityException("Solo il leader può disiscrivere il team.");
-        }
 
         Hackathon hackathon = team.getRegisteredHackathon();
-        if (hackathon == null) {
+        if (hackathon == null)
             throw new IllegalStateException("Il team non è iscritto a nessun hackathon.");
-        }
 
-        if (hackathon.getState() != HackathonStatus.REGISTRATION) {
+        if (hackathon.getState() != HackathonStatus.REGISTRATION)
             throw new IllegalStateException("Impossibile disiscriversi: l'hackathon non è più in fase di registrazione.");
-        }
 
         team.setRegisteredHackathon(null);
         hackathon.getRegisteredTeams().remove(team);
-
         teamRepository.save(team);
 
-        for (User member : team.getMembers()) {
-            notificationService.sendNotification(member, "Disiscrizione Hackathon", "Il team si è ritirato dall'hackathon.", "UNREGISTRATION");
-        }
+        for (User member : team.getMembers())
+            notificationService.sendNotification(member, "Disiscrizione Hackathon",
+                    "Il team si è ritirato dall'hackathon.", "UNREGISTRATION");
     }
 
-    // ELIMINA TEAM (Solo Leader)
     @Transactional
     public void deleteTeam(String teamId, String leaderId) {
         Team team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new NoSuchElementException("Team non trovato"));
 
-        if (!team.getLeader().getId().equals(leaderId)) {
+        if (!team.getLeader().getId().equals(leaderId))
             throw new SecurityException("Solo il leader può eliminare il team.");
-        }
 
-        if (team.getRegisteredHackathon() != null &&
-                team.getRegisteredHackathon().getState() == HackathonStatus.ONGOING) {
+        if (team.getRegisteredHackathon() != null
+                && team.getRegisteredHackathon().getState() == HackathonStatus.ONGOING)
             throw new IllegalStateException("Non puoi eliminare il team mentre l'hackathon è in corso.");
-        }
 
+        // Azzera currentTeam per ogni membro
         for (User member : team.getMembers()) {
-            member.getTeams().remove(team);
+            if (member instanceof UserPlayer playerMember) {
+                playerMember.setCurrentTeam(null);
+                userRepository.save(playerMember);
+            }
         }
         team.getMembers().clear();
 
@@ -136,16 +134,22 @@ public class TeamService {
         teamRepository.delete(team);
     }
 
-
     @Transactional
     public void leaveTeam(String teamId, String userId) {
-        Team team = teamRepository.findById(teamId).orElseThrow(() -> new NoSuchElementException("Team non trovato"));
-        User user = userRepository.findById(userId).orElseThrow(() -> new NoSuchElementException("Utente non trovato"));
+        Team team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new NoSuchElementException("Team non trovato"));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NoSuchElementException("Utente non trovato"));
 
-        if (!team.getMembers().contains(user)) throw new IllegalArgumentException("L'utente non fa parte di questo team.");
+        if (!team.getMembers().contains(user))
+            throw new IllegalArgumentException("L'utente non fa parte di questo team.");
 
         team.getMembers().remove(user);
-        user.getTeams().remove(team);
+
+        if (user instanceof UserPlayer playerUser) {
+            playerUser.setCurrentTeam(null);
+            userRepository.save(playerUser);
+        }
 
         if (team.getLeader().getId().equals(userId)) {
             if (team.getMembers().isEmpty()) {
@@ -153,23 +157,68 @@ public class TeamService {
                 teamRepository.delete(team);
                 return;
             } else {
-                User newLeader = team.getMembers().get(new Random().nextInt(team.getMembers().size()));
+                UserPlayer newLeader = team.getMembers().get(new Random().nextInt(team.getMembers().size()));
                 team.setLeader(newLeader);
             }
         }
         teamRepository.save(team);
-        userRepository.save(user);
+    }
+
+    @Transactional
+    public void kickMember(String teamId, String leaderId, String memberId) {
+        Team team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new NoSuchElementException("Team non trovato"));
+
+        if (!team.getLeader().getId().equals(leaderId))
+            throw new SecurityException("Solo il leader può espellere un membro.");
+
+        if (leaderId.equals(memberId))
+            throw new IllegalArgumentException("Il leader non può espellere se stesso. Usa changeLeader prima.");
+
+        User member = team.getMembers().stream()
+                .filter(m -> m.getId().equals(memberId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("L'utente non è un membro di questo team."));
+
+        team.getMembers().remove(member);
+
+        if (member instanceof UserPlayer playerMember) {
+            playerMember.setCurrentTeam(null);
+            userRepository.save(playerMember);
+        }
+
+        teamRepository.save(team);
+
+        notificationService.sendNotification(
+                member,
+                "Espulsione dal team",
+                "Sei stato rimosso dal team " + team.getName() + " dal leader.",
+                "KICKED_FROM_TEAM");
     }
 
     @Transactional
     public void changeLeader(String teamId, String currentLeaderId, String newLeaderId) {
-        Team team = teamRepository.findById(teamId).orElseThrow(() -> new NoSuchElementException("Team non trovato"));
-        if (!team.getLeader().getId().equals(currentLeaderId)) throw new SecurityException("Solo l'attuale leader può cedere il ruolo.");
-        User newLeader = team.getMembers().stream().filter(m -> m.getId().equals(newLeaderId)).findFirst().orElseThrow(() -> new IllegalArgumentException("Il nuovo leader deve essere un membro del team."));
+        Team team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new NoSuchElementException("Team non trovato"));
+
+        if (!team.getLeader().getId().equals(currentLeaderId))
+            throw new SecurityException("Solo l'attuale leader può cedere il ruolo.");
+
+        UserPlayer newLeader = team.getMembers().stream()
+                .filter(m -> m.getId().equals(newLeaderId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Il nuovo leader deve essere un membro del team."));
+
         team.setLeader(newLeader);
         teamRepository.save(team);
     }
 
-    public List<Team> getAllTeams() { return teamRepository.findAll(); }
-    public Team getTeamById(String id) { return teamRepository.findById(id).orElseThrow(() -> new NoSuchElementException("Team non trovato")); }
+    public List<Team> getAllTeams() {
+        return teamRepository.findAll();
+    }
+
+    public Team getTeamById(String id) {
+        return teamRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Team non trovato"));
+    }
 }

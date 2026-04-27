@@ -2,6 +2,8 @@ package it.hackhub.service;
 
 import it.hackhub.exception.UserAlreadyInTeamException;
 import it.hackhub.model.domain.User;
+import it.hackhub.model.domain.UserPlayer;
+import it.hackhub.model.domain.UserStaff;
 import it.hackhub.model.enums.UserRoleEnum;
 import it.hackhub.repository.UserRepository;
 import it.hackhub.role.UserRole;
@@ -23,19 +25,26 @@ public class UserService {
     }
 
     @Transactional
-    public User registerUser(String username, String email, String password, UserRoleEnum roleEnum, String customId) {
-        User user = new User();
-        if (customId != null && !customId.isBlank()) {
-            user.setId(customId);
-        }        user.setUsername(username);
-        user.setEmail(email);
-        user.setPassword(password);
-        user.setRoleEnum(roleEnum);
+public User registerUser(String username, String email, String password, UserRoleEnum roleEnum, String customId) {
 
-        user.initializeRole();
-
-        return userRepository.save(user);
+    User user;
+    if (roleEnum == UserRoleEnum.PLAYER) {
+        user = new UserPlayer();
+    } else {
+        user = new UserStaff();
     }
+
+    if (customId != null && !customId.isBlank()) {
+        user.setId(customId);
+    }
+    user.setUsername(username);
+    user.setEmail(email);
+    user.setPassword(password);
+    user.setRoleEnum(roleEnum);
+    user.initializeRole();
+
+    return userRepository.save(user);
+}
 
     public User findByEmail(String email) {
         return userRepository.findByEmail(email).orElse(null);

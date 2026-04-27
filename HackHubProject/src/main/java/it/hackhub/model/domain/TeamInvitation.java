@@ -28,11 +28,11 @@ public class TeamInvitation {
 
     @ManyToOne
     @JoinColumn(name = "sender_id")
-    private User sender;
+    private UserPlayer sender;
 
     @ManyToOne
     @JoinColumn(name = "receiver_id")
-    private User receiver;
+    private UserPlayer receiver;
 
     @ManyToOne
     @JoinColumn(name = "team_id")

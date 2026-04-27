@@ -10,11 +10,9 @@ public class RegistrationState implements HackathonState {
 
     @Override
     public void transitionToOngoing(Hackathon hackathon) {
-        // 1. Verifica presenza di almeno un Giudice
         boolean hasJudge = hackathon.getStaff().stream()
                 .anyMatch(u -> u.getRoleEnum() == it.hackhub.model.enums.UserRoleEnum.JUDGE);
 
-        // 2. Verifica presenza di almeno un Mentore
         boolean hasMentor = hackathon.getStaff().stream()
                 .anyMatch(u -> u.getRoleEnum() == it.hackhub.model.enums.UserRoleEnum.MENTOR);
 
@@ -22,12 +20,18 @@ public class RegistrationState implements HackathonState {
             throw new IllegalStateException("Impossibile avviare l'hackathon: assicurarsi di aver assegnato almeno un Giudice e un Mentore.");
         }
 
-        // 3. Controllo opzionale: presenza di almeno un team iscritto
         if (hackathon.getRegisteredTeams().isEmpty()) {
             throw new IllegalStateException("Impossibile avviare l'hackathon senza team iscritti.");
         }
 
-        // Transizione di stato
+        /*
+        CONTROLLO DATA INIZIO (opzionale, dipende da come si vuole gestire la flessibilità del sistema)
+        if (hackathon.getStartDate().isAfter(LocalDateTime.now())) {
+            throw new IllegalStateException("Impossibile avviare l'hackathon prima della data di inizio prevista.");
+        }
+
+         */
+
         hackathon.setState(HackathonStatus.ONGOING);
 
     }
@@ -85,14 +89,10 @@ public class RegistrationState implements HackathonState {
 
     @Override
     public void cancelHackathon(Hackathon hackathon) {
-        // Verifica se ci sono team iscritti
         if (!hackathon.getRegisteredTeams().isEmpty()) {
-            // Se ci sono team, la chiusura potrebbe richiedere logiche di rimborso (se previsto)
-            // o semplicemente una notifica di annullamento specifica.
             System.out.println("Annullamento hackathon con team iscritti in corso...");
         }
 
-        // L'hackathon passa direttamente a COMPLETED (o uno stato di ANNULLATO se previsto)
         hackathon.setState(HackathonStatus.COMPLETED);
 
     }

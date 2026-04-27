@@ -5,6 +5,10 @@ import it.hackhub.model.enums.UserRoleEnum;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+import it.hackhub.model.domain.UserPlayer;
+import it.hackhub.model.domain.UserStaff;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,5 +27,8 @@ public interface UserRepository extends JpaRepository<User, String> {
     boolean isUserInAnyTeam(String userId);
 
     java.util.Optional<User> findByEmailAndPassword(String email, String password);
+
+    List<UserPlayer> findAllByRoleEnumIn(List<UserRoleEnum> roles);
+    List<UserStaff> findByRoleEnumIn(List<UserRoleEnum> staffRoles);
 
 }

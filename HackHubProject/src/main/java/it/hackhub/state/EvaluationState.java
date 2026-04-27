@@ -41,7 +41,6 @@ public class EvaluationState implements HackathonState {
 
     @Override
     public void evaluateSubmission(Hackathon hackathon, Submission submission, User judge) {
-        // Logica di valutazione [cite: 20]
     }
 
     @Override
@@ -52,10 +51,7 @@ public class EvaluationState implements HackathonState {
 
     @Override
     public void declareWinner(Hackathon hackathon) {
-        // Effettua la transizione allo stato finale
         hackathon.setState(it.hackhub.model.enums.HackathonStatus.COMPLETED);
-
-        // REQUISITO: Quando l'hackathon è concluso, lo staff deve essere liberato (Observer)
     }
 
     @Override

@@ -1,61 +1,55 @@
 package it.hackhub.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+import it.hackhub.dto.request.evaluation.UpdateEvaluationRequest;
+import it.hackhub.dto.request.evaluation.VoteRequest;
 import it.hackhub.model.domain.Evaluation;
 import it.hackhub.service.EvaluationService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Tag(name = "Valutazioni", description = "Gestione valutazioni dei giudici")
 @RestController
 @RequestMapping("/api/evaluations")
 public class EvaluationController {
 
-    @Autowired
-    private EvaluationService evaluationService;
-
-    public static class VoteRequest {
-        public String judgeId;
-        public String submissionId;
-        public int score;
-        public String feedback;
-    }
+    @Autowired private EvaluationService evaluationService;
 
     @PostMapping
-    public ResponseEntity<String> evaluate(@RequestBody VoteRequest req) {
-        try {
-            evaluationService.evaluateSubmission(req.judgeId, req.submissionId, req.score, req.feedback);
-            return ResponseEntity.ok("Voto registrato!");
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Errore: " + e.getMessage());
-        }
+    public ResponseEntity<String> evaluate(@Valid @RequestBody VoteRequest req) {
+        evaluationService.evaluateSubmission(req.judgeId, req.submissionId, req.score, req.feedback);
+        return ResponseEntity.ok("Voto registrato!");
     }
+
     @GetMapping
     public ResponseEntity<List<Evaluation>> getAll() {
         return ResponseEntity.ok(evaluationService.getAllEvaluations());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getById(@PathVariable String id) {
-        try {
-            return ResponseEntity.ok(evaluationService.getEvaluationById(id));
-        } catch (Exception e) {
-            return ResponseEntity.status(404).body(e.getMessage());
-        }
+    public ResponseEntity<Evaluation> getById(@PathVariable String id) {
+        return ResponseEntity.ok(evaluationService.getEvaluationById(id));
     }
-    // GET: Valutazioni ricevute da un Team
-    // URL: http://localhost:8080/api/evaluations/team/{teamId}
+
     @GetMapping("/team/{teamId}")
     public ResponseEntity<List<Evaluation>> getByTeam(@PathVariable String teamId) {
         return ResponseEntity.ok(evaluationService.getEvaluationsByTeam(teamId));
     }
 
-    // GET: Tutte le valutazioni di un Hackathon
-    // URL: http://localhost:8080/api/evaluations/hackathon/{hackathonId}
     @GetMapping("/hackathon/{hackathonId}")
     public ResponseEntity<List<Evaluation>> getByHackathon(@PathVariable String hackathonId) {
         return ResponseEntity.ok(evaluationService.getEvaluationsByHackathon(hackathonId));
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<String> updateEvaluation(
+            @PathVariable String id,
+            @Valid @RequestBody UpdateEvaluationRequest req) {
+        evaluationService.updateEvaluation(id, req.judgeId, req.score, req.feedback);
+        return ResponseEntity.ok("Valutazione aggiornata con successo.");
+    }
 }

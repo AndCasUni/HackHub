@@ -26,7 +26,7 @@ public class Team {
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "leader_id", nullable = false)
     @JsonIgnoreProperties("teams")
-    private User leader;
+    private UserPlayer leader;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "hackathon_id")
@@ -40,7 +40,7 @@ public class Team {
             inverseJoinColumns = @JoinColumn(name = "user_id")
     )
     @JsonIgnoreProperties("teams")
-    private List<User> members = new ArrayList<>();
+    private List<UserPlayer> members = new ArrayList<>();
 
     @OneToOne(mappedBy = "team", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JsonIgnoreProperties("team")

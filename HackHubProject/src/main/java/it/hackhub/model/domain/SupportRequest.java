@@ -37,7 +37,7 @@ public class SupportRequest {
 
     @ManyToOne
     @JoinColumn(name = "requester_id", nullable = false)
-    private User requester;
+    private UserPlayer requester;
 
     @ManyToOne
     @JoinColumn(name = "team_id")
@@ -45,5 +45,5 @@ public class SupportRequest {
 
     @ManyToOne
     @JoinColumn(name = "mentor_id")
-    private User assignedMentor;
+    private UserStaff assignedMentor;
 }

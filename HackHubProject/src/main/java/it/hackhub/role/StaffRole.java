@@ -1,23 +1,24 @@
 package it.hackhub.role;
 
 public class StaffRole implements UserRole {
-    @Override
-    public boolean canCreateTeam() { return true; }
 
     @Override
-    public boolean canInviteMembers() { return true; }
+    public boolean canCreateTeam() { return false; }
 
     @Override
-    public boolean canRegisterTeamToHackathon() { return true; }
+    public boolean canInviteMembers() { return false; }
 
     @Override
-    public boolean canSubmitProject() { return true; }
+    public boolean canRegisterTeamToHackathon() { return false; }
+
+    @Override
+    public boolean canSubmitProject() { return false; }
 
     @Override
     public boolean canCreateHackathon() { return false; }
 
     @Override
-    public boolean canAssignStaff() { return false; }
+    public boolean canAssignStaff() { return true; }
 
     @Override
     public boolean canTransitionHackathonState() { return true; }
