@@ -1,11 +1,13 @@
 package it.hackhub.service;
 
 import it.hackhub.model.domain.Evaluation;
+import it.hackhub.model.domain.Hackathon;
 import it.hackhub.model.domain.Submission;
 import it.hackhub.model.domain.UserStaff;
 import it.hackhub.model.enums.HackathonStatus;
 import it.hackhub.model.enums.UserRoleEnum;
 import it.hackhub.repository.EvaluationRepository;
+import it.hackhub.repository.HackathonRepository;
 import it.hackhub.repository.SubmissionRepository;
 import it.hackhub.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,14 +23,16 @@ public class EvaluationService {
     private final EvaluationRepository evaluationRepository;
     private final SubmissionRepository submissionRepository;
     private final UserRepository userRepository;
+    private final HackathonRepository hackathonRepository;
 
     @Autowired
     public EvaluationService(EvaluationRepository evaluationRepository,
                              SubmissionRepository submissionRepository,
-                             UserRepository userRepository) {
+                             UserRepository userRepository, HackathonRepository hackathonRepository) {
         this.evaluationRepository = evaluationRepository;
         this.submissionRepository = submissionRepository;
         this.userRepository = userRepository;
+        this.hackathonRepository = hackathonRepository;
     }
 
     @Transactional
@@ -88,7 +92,13 @@ public class EvaluationService {
         return evaluationRepository.findBySubmission_Team_Id(teamId);
     }
 
-    public List<Evaluation> getEvaluationsByHackathon(String hackathonId) {
+    public List<Evaluation> getEvaluationsByHackathon(String hackathonId, String requesterId) {
+        Hackathon hackathon = hackathonRepository.findById(hackathonId)
+                .orElseThrow(() -> new NoSuchElementException("Hackathon non trovato con ID: " + hackathonId));
+
+        if (!hackathon.getOrganizer().getId().equals(requesterId))
+            throw new SecurityException("Solo l'organizzatore può visualizzare le valutazioni di questo hackathon.");
+
         return evaluationRepository.findBySubmission_Team_RegisteredHackathon_Id(hackathonId);
     }
 }

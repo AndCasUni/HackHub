@@ -41,8 +41,8 @@ public class EvaluationController {
     }
 
     @GetMapping("/hackathon/{hackathonId}")
-    public ResponseEntity<List<Evaluation>> getByHackathon(@PathVariable String hackathonId) {
-        return ResponseEntity.ok(evaluationService.getEvaluationsByHackathon(hackathonId));
+    public ResponseEntity<List<Evaluation>> getByHackathon(@PathVariable String hackathonId , @PathVariable String requesterId) {
+        return ResponseEntity.ok(evaluationService.getEvaluationsByHackathon(hackathonId, requesterId));
     }
 
     @PutMapping("/{id}")

@@ -81,8 +81,12 @@ public class HackathonService extends HackathonSubject {
         if (organizer.getRoleEnum() != UserRoleEnum.ORGANIZER)
             throw new IllegalArgumentException("L'utente specificato non è un ORGANIZER.");
 
-        Hackathon hackathon = new Hackathon();
-        if (customId != null && !customId.isBlank()) hackathon.setId(customId);
+        if (hackathonRepository.existsByOrganizer_IdAndStateNot(organizerId, HackathonStatus.COMPLETED))
+            throw new IllegalStateException(
+                    "L'organizzatore ha già un hackathon attivo. " +
+                            "È necessario attendere il completamento prima di crearne uno nuovo.");
+
+        Hackathon hackathon = new Hackathon();        if (customId != null && !customId.isBlank()) hackathon.setId(customId);
         hackathon.setName(name);
         hackathon.setDescription(description);
         hackathon.setStartDate(startDate);
@@ -95,8 +99,9 @@ public class HackathonService extends HackathonSubject {
     }
 
     @Transactional
-    public void addStaff(String hackathonId, String userId) {
+    public void addStaff(String hackathonId,String requesterId, String userId) {
         Hackathon hackathon = findHackathon(hackathonId);
+        checkIsOrganizer(hackathon, requesterId);
         User user = findUser(userId);
 
         if (!(user instanceof UserStaff staffUser))
@@ -247,6 +252,9 @@ public class HackathonService extends HackathonSubject {
         if (hackathon == null)
             throw new IllegalStateException("Il team non è iscritto a nessun hackathon.");
 
+        if (hackathon.getState() != HackathonStatus.ONGOING)
+            throw new IllegalStateException("Le segnalazioni sono possibili solo durante la fase attiva dell'hackathon.");
+        
         boolean isStaff = hackathon.getStaff().stream()
                 .anyMatch(s -> s.getId().equals(mentorId));
         if (!isStaff)

@@ -12,4 +12,6 @@ public interface HackathonRepository extends JpaRepository<Hackathon, String> {
 
     // Trova tutti gli hackathon in un certo stato
     List<Hackathon> findByState(HackathonStatus state);
+    boolean existsByOrganizer_IdAndStateNot(String organizerId, HackathonStatus state);
+
 }
