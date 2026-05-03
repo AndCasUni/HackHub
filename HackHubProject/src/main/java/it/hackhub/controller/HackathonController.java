@@ -46,7 +46,7 @@ public class HackathonController {
     }
 
     @PostMapping("/{id}/staff")
-    public ResponseEntity<String> addStaff(@PathVariable String id, @PathVariable String requesterId,
+    public ResponseEntity<String> addStaff(@PathVariable String id, @RequestParam String requesterId,
                                            @Valid @RequestBody AddStaffRequest req) {
         hackathonService.addStaff(id, requesterId, req.userId);
         return ResponseEntity.ok("Membro dello staff aggiunto con successo.");
