@@ -51,14 +51,20 @@ public class TeamService {
         if (playerLeader.isMemberOfActiveTeam())
             throw new UserAlreadyInTeamException(leaderId);
 
+        if (customId != null && !customId.isBlank() && teamRepository.existsById(customId))
+            throw new IllegalArgumentException("Esiste già un team con ID: " + customId);
+
         Team team = new Team();
         if (customId != null && !customId.isBlank()) team.setId(customId);
         team.setName(name);
         team.setLeader(playerLeader);
         team.getMembers().add(playerLeader);
-        playerLeader.setCurrentTeam(team);
+
+        Team savedTeam = teamRepository.save(team);
+        playerLeader.setCurrentTeam(savedTeam);
         userRepository.save(playerLeader);
-        return teamRepository.save(team);
+
+        return savedTeam;
     }
 
     @Transactional

@@ -96,8 +96,13 @@ public class EvaluationService {
         Hackathon hackathon = hackathonRepository.findById(hackathonId)
                 .orElseThrow(() -> new NoSuchElementException("Hackathon non trovato con ID: " + hackathonId));
 
-        if (!hackathon.getOrganizer().getId().equals(requesterId))
-            throw new SecurityException("Solo l'organizzatore può visualizzare le valutazioni di questo hackathon.");
+        boolean isOrganizer = hackathon.getOrganizer().getId().equals(requesterId);
+
+        boolean isJudge = hackathon.getStaff().stream()
+                .anyMatch(s -> s.getId().equals(requesterId));
+
+        if (!isOrganizer && !isJudge)
+            throw new SecurityException("Solo l'organizzatore o il giudice possono visualizzare le valutazioni.");
 
         return evaluationRepository.findBySubmission_Team_RegisteredHackathon_Id(hackathonId);
     }

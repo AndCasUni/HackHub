@@ -10,6 +10,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
+/**
+ * DataInitializer v2 — Dati allineati alla Collection v4
+ *
+ * MODIFICHE rispetto alla v1:
+ *  - Aggiunto player7 (libero) → usato in "Invitare Utente"
+ *  - inv1 ora: player4 → player5, team3 (team3 LIBERO, non team1 ONGOING)
+ *  - inv2 invariata: player1 → player3, team1 (player3 già in team2 → errore atteso)
+ */
 @Component
 public class DataInitializer {
 
@@ -26,47 +34,52 @@ public class DataInitializer {
     public void init() {
         if (userRepository.count() > 0) return;
 
-        // ─── ORGANIZER ────────────────────────────────────────────────────────
-        // org1 → hack1 (ONGOING)
-        // org2 → hack2 (REGISTRATION)
-        // org3 → hack3 (EVALUATION)
-        // org4 → LIBERO: test "Crea Hackathon", "Aggiungi Staff", "Annulla Hackathon"
-        UserStaff org1    = createStaff("org1",    "Mario Org1",   "org1@hack.it",    UserRoleEnum.ORGANIZER);
-        UserStaff org2    = createStaff("org2",    "Luigi Org2",   "org2@hack.it",    UserRoleEnum.ORGANIZER);
-        UserStaff org3    = createStaff("org3",    "Giulia Org3",  "org3@hack.it",    UserRoleEnum.ORGANIZER);
-        UserStaff org4    = createStaff("org4",    "Sara Org4",    "org4@hack.it",    UserRoleEnum.ORGANIZER);
+        // ================================================================
+        // ORGANIZER
+        // org1 → hack1 (ONGOING)   org2 → hack2 (REGISTRATION)
+        // org3 → hack3 (EVALUATION) org4 → LIBERO (test Crea Hackathon)
+        // ================================================================
+        UserStaff org1 = createStaff("org1", "Mario Org1",   "org1@hack.it",   UserRoleEnum.ORGANIZER);
+        UserStaff org2 = createStaff("org2", "Luigi Org2",   "org2@hack.it",   UserRoleEnum.ORGANIZER);
+        UserStaff org3 = createStaff("org3", "Giulia Org3",  "org3@hack.it",   UserRoleEnum.ORGANIZER);
+        UserStaff org4 = createStaff("org4", "Sara Org4",    "org4@hack.it",   UserRoleEnum.ORGANIZER);
 
-        // ─── MENTOR ───────────────────────────────────────────────────────────
-        // mentor1 → hack1 | mentor2 → hack2 | mentor3 → hack3
-        UserStaff mentor1 = createStaff("mentor1", "Carlo Mentor1","mentor1@hack.it", UserRoleEnum.MENTOR);
-        UserStaff mentor2 = createStaff("mentor2", "Anna Mentor2", "mentor2@hack.it", UserRoleEnum.MENTOR);
-        UserStaff mentor3 = createStaff("mentor3", "Rosa Mentor3", "mentor3@hack.it", UserRoleEnum.MENTOR);
+        // ================================================================
+        // MENTOR  (mentor1→hack1, mentor2→hack2, mentor3→hack3)
+        // ================================================================
+        UserStaff mentor1 = createStaff("mentor1", "Carlo Mentor1", "mentor1@hack.it", UserRoleEnum.MENTOR);
+        UserStaff mentor2 = createStaff("mentor2", "Anna Mentor2",  "mentor2@hack.it", UserRoleEnum.MENTOR);
+        UserStaff mentor3 = createStaff("mentor3", "Rosa Mentor3",  "mentor3@hack.it", UserRoleEnum.MENTOR);
 
-        // ─── JUDGE ────────────────────────────────────────────────────────────
-        // judge1 → hack1 | judge2 → hack2 | judge3 → hack3
-        // judge4 → LIBERO: test "Aggiungi Staff" a hack4
-        UserStaff judge1  = createStaff("judge1",  "Sara Judge1",  "judge1@hack.it",  UserRoleEnum.JUDGE);
-        UserStaff judge2  = createStaff("judge2",  "Paolo Judge2", "judge2@hack.it",  UserRoleEnum.JUDGE);
-        UserStaff judge3  = createStaff("judge3",  "Marco Judge3", "judge3@hack.it",  UserRoleEnum.JUDGE);
-        UserStaff judge4  = createStaff("judge4",  "Elena Judge4", "judge4@hack.it",  UserRoleEnum.JUDGE);
+        // ================================================================
+        // JUDGE  (judge1→hack1, judge2→hack2, judge3→hack3, judge4 LIBERO)
+        // ================================================================
+        UserStaff judge1 = createStaff("judge1", "Sara Judge1",  "judge1@hack.it", UserRoleEnum.JUDGE);
+        UserStaff judge2 = createStaff("judge2", "Paolo Judge2", "judge2@hack.it", UserRoleEnum.JUDGE);
+        UserStaff judge3 = createStaff("judge3", "Marco Judge3", "judge3@hack.it", UserRoleEnum.JUDGE);
+        UserStaff judge4 = createStaff("judge4", "Elena Judge4", "judge4@hack.it", UserRoleEnum.JUDGE);
 
-        // ─── PLAYER ───────────────────────────────────────────────────────────
-        // player1 → leader team1 (hack1)  | UC: invita p6, invia sub, richiedi assistenza
-        // player2 → membro team1           | UC: abbandona team
-        // player3 → leader team2 (hack3)  | riceve inv2 (già in team → errore)
-        // player4 → leader team3 (libero) | UC: iscrivere team, disiscrizione
-        // player5 → LIBERO, riceve inv1   | UC: accetta invito
-        // player6 → LIBERO, nessun inv    | UC: invita utente (flusso OK, richiesta fresca)
-        UserPlayer player1 = createPlayer("player1", "Luca Leader",  "player1@hack.it");
-        UserPlayer player2 = createPlayer("player2", "Anna Member",  "player2@hack.it");
-        UserPlayer player3 = createPlayer("player3", "Marco Beta",   "player3@hack.it");
-        UserPlayer player4 = createPlayer("player4", "Giorgio Free", "player4@hack.it");
-        UserPlayer player5 = createPlayer("player5", "Elena Free",   "player5@hack.it");
-        UserPlayer player6 = createPlayer("player6", "Sofia Free",   "player6@hack.it");
+        // ================================================================
+        // PLAYER
+        // player1 = leader team1 (hack1)  → UC: invia sub, richiedi assistenza
+        // player2 = membro team1          → UC: abbandona team
+        // player3 = leader team2 (hack3)  → riceve inv2 (già in team → errore atteso)
+        // player4 = leader team3 (libero) → UC: iscrivere team, accetta inv1 come sender
+        // player5 = LIBERO, riceve inv1   → UC: accetta invito
+        // player6 = LIBERO                → UC: creare team (team4)
+        // player7 = LIBERO ← NUOVO       → UC: invitare utente (ricevente)
+        // ================================================================
+        UserPlayer player1 = createPlayer("player1", "Luca Leader",   "player1@hack.it");
+        UserPlayer player2 = createPlayer("player2", "Anna Member",   "player2@hack.it");
+        UserPlayer player3 = createPlayer("player3", "Marco Beta",    "player3@hack.it");
+        UserPlayer player4 = createPlayer("player4", "Giorgio Free",  "player4@hack.it");
+        UserPlayer player5 = createPlayer("player5", "Elena Free",    "player5@hack.it");
+        UserPlayer player6 = createPlayer("player6", "Sofia Free",    "player6@hack.it");
+        UserPlayer player7 = createPlayer("player7", "Luca Free",     "player7@hack.it"); // NUOVO
 
-        // ─── HACKATHON 1 — ONGOING ────────────────────────────────────────────
-        // Staff: mentor1 + judge1 | Team: team1 (player1 + player2)
-        // ⚠️ sub1 NON precaricata → "Invia Sottomissione" è INDIPENDENTE
+        // ================================================================
+        // HACKATHON 1 — ONGOING (staff: mentor1, judge1 | team: team1)
+        // ================================================================
         Hackathon hack1 = new Hackathon();
         hack1.setId("hack1");
         hack1.setName("HackHub Spring 2026");
@@ -82,9 +95,10 @@ public class DataInitializer {
         assignStaff(judge1, hack1);
         hackathonRepository.save(hack1);
 
-        // ─── HACKATHON 2 — REGISTRATION ──────────────────────────────────────
-        // Staff: mentor2 + judge2 già pronti → "Inizia Hackathon" è INDIPENDENTE
-        // Nessun team iscritto → team3 si iscrive nel test "Iscrivere Team"
+        // ================================================================
+        // HACKATHON 2 — REGISTRATION (staff: mentor2, judge2 | nessun team)
+        // team3 si iscrive nel test "Iscrivere Team" → hack2 poi avviato
+        // ================================================================
         Hackathon hack2 = new Hackathon();
         hack2.setId("hack2");
         hack2.setName("HackHub Summer 2026");
@@ -100,10 +114,10 @@ public class DataInitializer {
         assignStaff(judge2, hack2);
         hackathonRepository.save(hack2);
 
-        // ─── HACKATHON 3 — EVALUATION ─────────────────────────────────────────
-        // Staff: mentor3 + judge3 | Team: team2 (player3) | Sub: sub2
-        // ⚠️ eval NON precaricata → "Valuta Sottomissione" è INDIPENDENTE
-        // "Proclama Vincitore" dipende da "Valuta Sottomissione" (2 passi)
+        // ================================================================
+        // HACKATHON 3 — EVALUATION (staff: mentor3, judge3 | team: team2 + sub2)
+        // sub2 valutata nel test "Valutare Sottomissione" → poi Proclama Vincitore
+        // ================================================================
         Hackathon hack3 = new Hackathon();
         hack3.setId("hack3");
         hack3.setName("HackHub Winter 2025");
@@ -119,7 +133,10 @@ public class DataInitializer {
         assignStaff(judge3, hack3);
         hackathonRepository.save(hack3);
 
-        // ─── TEAM 1 — iscritto hack1 (ONGOING) ───────────────────────────────
+        // ================================================================
+        // TEAM 1 — iscritto hack1 ONGOING (leader: player1, membro: player2)
+        // sub1 NON precaricata → creata nel test "Inviare Sottomissione"
+        // ================================================================
         Team team1 = new Team();
         team1.setId("team1");
         team1.setName("Team Alpha");
@@ -135,7 +152,10 @@ public class DataInitializer {
         hack1.getRegisteredTeams().add(team1);
         hackathonRepository.save(hack1);
 
-        // ─── TEAM 2 — iscritto hack3 (EVALUATION) ────────────────────────────
+        // ================================================================
+        // TEAM 2 — iscritto hack3 EVALUATION (leader: player3)
+        // sub2 precaricata ma NON valutata → valutata nel test
+        // ================================================================
         Team team2 = new Team();
         team2.setId("team2");
         team2.setName("Team Beta");
@@ -148,7 +168,10 @@ public class DataInitializer {
         hack3.getRegisteredTeams().add(team2);
         hackathonRepository.save(hack3);
 
-        // ─── TEAM 3 — LIBERO ──────────────────────────────────────────────────
+        // ================================================================
+        // TEAM 3 — LIBERO (leader: player4)
+        // Usato per: Iscrivere Team → hack2, Accetta Invito (player5 entra)
+        // ================================================================
         Team team3 = new Team();
         team3.setId("team3");
         team3.setName("Team Gamma");
@@ -158,8 +181,10 @@ public class DataInitializer {
         player4.setCurrentTeam(team3);
         userRepository.save(player4);
 
-        // ─── SUBMISSION 2 — team2 / hack3 (EVALUATION) ───────────────────────
-        // sub1 NON precaricata (team1/hack1 la crea nella demo)
+        // ================================================================
+        // SUBMISSION 2 — team2, hack3 (NON valutata)
+        // sub1 NON precaricata → creata nel test
+        // ================================================================
         Submission sub2 = new Submission();
         sub2.setId("sub2");
         sub2.setTeam(team2);
@@ -169,30 +194,36 @@ public class DataInitializer {
         team2.setSubmission(sub2);
         teamRepository.save(team2);
 
-        // ─── INVITI ───────────────────────────────────────────────────────────
-        // inv1: player1 → player5 (PENDING) — player5 libero → "Accetta Invito" INDIPENDENTE
+        // ================================================================
+        // INVITI
+        // inv1: player4 → player5, team3 PENDING   ← MODIFICATO (era team1)
+        //   → player5 è libero, team3 è libero → "Accetta Invito" funziona
+        // inv2: player1 → player3, team1 PENDING    ← invariato (errore atteso)
+        //   → player3 è già in team2 → "accettare invito" deve dare errore
+        // ================================================================
         TeamInvitation inv1 = new TeamInvitation();
         inv1.setId("inv1");
-        inv1.setSender(player1);
-        inv1.setReceiver(player5);
-        inv1.setTeam(team1);
+        inv1.setSender(player4);   // player4 = leader team3
+        inv1.setReceiver(player5); // player5 = libero
+        inv1.setTeam(team3);       // team3 = libero (non in hackathon attivo)
         inv1.setStatus(InvitationStatus.PENDING);
         inv1.setSentAt(LocalDateTime.now());
         teamInvitationRepository.save(inv1);
 
-        // inv2: player1 → player3 (PENDING) — player3 già in team2 → errore atteso
-        // Usato per: testare la risposta del sistema quando si invita chi è già in un team
         TeamInvitation inv2 = new TeamInvitation();
         inv2.setId("inv2");
-        inv2.setSender(player1);
-        inv2.setReceiver(player3);
+        inv2.setSender(player1);   // player1 = leader team1
+        inv2.setReceiver(player3); // player3 = già in team2 → errore atteso
         inv2.setTeam(team1);
         inv2.setStatus(InvitationStatus.PENDING);
         inv2.setSentAt(LocalDateTime.now());
         teamInvitationRepository.save(inv2);
 
-        // ─── SUPPORT REQUESTS ─────────────────────────────────────────────────
-        // sup1: PENDING → "Proponi Call" (mentor1 accetta): INDIPENDENTE
+        // ================================================================
+        // SUPPORT REQUESTS
+        // sup1 PENDING    → test "Proporre Call" (mentor1 accetta)
+        // sup2 CALLPROPOSED → precaricato per altri test (conferma call, ecc.)
+        // ================================================================
         SupportRequest sup1 = new SupportRequest();
         sup1.setId("sup1");
         sup1.setTitle("Problema tecnico deploy");
@@ -203,8 +234,6 @@ public class DataInitializer {
         sup1.setCreatedAt(LocalDateTime.now().minusHours(3));
         supportRequestRepository.save(sup1);
 
-        // sup2: CALL_PROPOSED, mentor1 assegnato → "Conferma Call" (leader): INDIPENDENTE
-        // confirmCall → stato diventa ACCEPTED
         SupportRequest sup2 = new SupportRequest();
         sup2.setId("sup2");
         sup2.setTitle("Problema con il database");
@@ -217,8 +246,6 @@ public class DataInitializer {
         sup2.setCreatedAt(LocalDateTime.now().minusHours(2));
         supportRequestRepository.save(sup2);
 
-        // sup3: CALL_PROPOSED, mentor1 assegnato → "Rifiuta Call" (leader): INDIPENDENTE
-        // rejectCall → torna a PENDING, libera mentore e ora call
         SupportRequest sup3 = new SupportRequest();
         sup3.setId("sup3");
         sup3.setTitle("Difficoltà algoritmo ranking");
@@ -231,8 +258,6 @@ public class DataInitializer {
         sup3.setCreatedAt(LocalDateTime.now().minusHours(1));
         supportRequestRepository.save(sup3);
 
-        // sup4: ACCEPTED, mentor1 assegnato → "Chiudi Support" (mentor): INDIPENDENTE
-        // closeRequest non controlla lo stato → può chiudere da ACCEPTED direttamente
         SupportRequest sup4 = new SupportRequest();
         sup4.setId("sup4");
         sup4.setTitle("Problema di autenticazione");
@@ -245,26 +270,19 @@ public class DataInitializer {
         sup4.setCreatedAt(LocalDateTime.now().minusDays(1));
         supportRequestRepository.save(sup4);
 
-        System.out.println("╔══════════════════════════════════════════════════════════════╗");
-        System.out.println("║            DataInitializer — Dati caricati con successo      ║");
-        System.out.println("╠══════════════════════════════════════════════════════════════╣");
-        System.out.println("║ Organizer : org1(hack1) org2(hack2) org3(hack3) org4(LIBERO) ║");
-        System.out.println("║ Mentor    : mentor1(hack1) mentor2(hack2) mentor3(hack3)     ║");
-        System.out.println("║ Judge     : judge1(hack1) judge2(hack2) judge3(hack3)        ║");
-        System.out.println("║             judge4(LIBERO → aggiungi a hack4)                ║");
-        System.out.println("║ Player    : p1(leader team1) p2(membro team1)                ║");
-        System.out.println("║             p3(leader team2) p4(leader team3)                ║");
-        System.out.println("║             p5(LIBERO, inv1) p6(LIBERO, nessun inv)          ║");
-        System.out.println("║ Hackathon : hack1=ONGOING hack2=REGISTRATION hack3=EVALUATION║");
-        System.out.println("║ Team      : team1(hack1,p1+p2) team2(hack3,p3) team3(FREE,p4)║");
-        System.out.println("║ Sub       : sub2(team2/hack3) — sub1 NON precaricata         ║");
-        System.out.println("║ Inviti    : inv1(p1→p5 OK) inv2(p1→p3 ERRORE)                ║");
-        System.out.println("║ Support   : sup1(PENDING) sup2(CALL_PROPOSED)                ║");
-        System.out.println("║             sup3(CALL_PROPOSED) sup4(ACCEPTED)               ║");
-        System.out.println("╚══════════════════════════════════════════════════════════════╝");
+        System.out.println("\n======= DataInitializer: Dati caricati con successo =======");
+        System.out.println("Organizer:  org1→hack1  org2→hack2  org3→hack3  org4→LIBERO");
+        System.out.println("Mentor:     mentor1→hack1  mentor2→hack2  mentor3→hack3");
+        System.out.println("Judge:      judge1→hack1  judge2→hack2  judge3→hack3  judge4→LIBERO");
+        System.out.println("Player:     p1(leader team1)  p2(membro team1)  p3(leader team2)");
+        System.out.println("            p4(leader team3)  p5(LIBERO,inv1)  p6(LIBERO)  p7(LIBERO,NEW)");
+        System.out.println("Hackathon:  hack1→ONGOING  hack2→REGISTRATION  hack3→EVALUATION");
+        System.out.println("Team:       team1(hack1,p1+p2)  team2(hack3,p3)  team3(FREE,p4)");
+        System.out.println("Sub:        sub2(team2,hack3) — sub1 NON precaricata");
+        System.out.println("Inviti:     inv1(p4→p5, team3 PENDING)  inv2(p1→p3, team1 PENDING→errore)");
+        System.out.println("Support:    sup1(PENDING)  sup2(CALLPROPOSED)  sup3(CALLPROPOSED)  sup4(ACCEPTED)");
+        System.out.println("===========================================================\n");
     }
-
-    // ─── Helper methods ───────────────────────────────────────────────────────
 
     private UserStaff createStaff(String id, String username, String email, UserRoleEnum role) {
         UserStaff u = new UserStaff();
