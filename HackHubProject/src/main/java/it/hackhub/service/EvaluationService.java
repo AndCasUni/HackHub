@@ -45,7 +45,7 @@ public class EvaluationService {
         if (submission.getTeam().getRegisteredHackathon().getState() != HackathonStatus.EVALUATION)
             throw new IllegalStateException("L'Hackathon non è in fase di valutazione.");
 
-        if (!submission.getTeam().getRegisteredHackathon().getStaff().stream().noneMatch(s -> s.getId().equals(judgeId)))
+        if (submission.getTeam().getRegisteredHackathon().getStaff().stream().noneMatch(s -> s.getId().equals(judgeId)))
             throw new SecurityException("L'utente non è un giudice autorizzato per questo hackathon.");
 
         if (judge.getRoleEnum() != UserRoleEnum.JUDGE)
