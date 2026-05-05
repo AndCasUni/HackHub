@@ -81,6 +81,13 @@ public class TeamService {
         if (hackathon.getState() != HackathonStatus.REGISTRATION)
             throw new IllegalStateException("L'Hackathon non è in fase di iscrizione.");
 
+        if (team.getRegisteredHackathon() != null)
+            throw new IllegalStateException("Il team è già iscritto a un hackathon.");
+
+        if (team.getMembers().size() > hackathon.getMaxParticipants())
+            throw new IllegalStateException(
+                    "Il team è troppo grande. Massimo: " + hackathon.getMaxParticipants());
+
         team.setRegisteredHackathon(hackathon);
         hackathon.getRegisteredTeams().add(team);
         teamRepository.save(team);
